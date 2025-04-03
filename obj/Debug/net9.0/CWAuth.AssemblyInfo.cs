@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CWAuth")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8fe5025e7b6e3ea516897bc549a07a7326c31064")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d5d186d573abcd81848821010ba175fa8defb59b")]
 [assembly: System.Reflection.AssemblyProductAttribute("CWAuth")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CWAuth")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
