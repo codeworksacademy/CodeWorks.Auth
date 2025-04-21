@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace CWAuth.Extensions;
+namespace CodeWorks.Auth.Extensions;
 
 public static class PasswordHelper<TUser> where TUser : class
 {

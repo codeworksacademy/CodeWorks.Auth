@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace CWAuth.Security;
+namespace CodeWorks.Auth.Security;
 
 public static class TokenHelper
 {

@@ -1,14 +1,14 @@
 using System.Security.Claims;
 using System.Text;
-using CWAuth.Interfaces;
-using CWAuth.Security;
-using CWAuth.Services;
+using CodeWorks.Auth.Interfaces;
+using CodeWorks.Auth.Security;
+using CodeWorks.Auth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
-namespace CWAuth.Extensions;
+namespace CodeWorks.Auth.Extensions;
 
 public static class ServiceCollectionExtensions
 {

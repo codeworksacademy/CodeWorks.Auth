@@ -1,7 +1,7 @@
 using System.Security.Claims;
-using CWAuth.Interfaces;
+using CodeWorks.Auth.Interfaces;
 
-namespace CWAuth.Security;
+namespace CodeWorks.Auth.Security;
 
 public static class ClaimsExtensions
 {

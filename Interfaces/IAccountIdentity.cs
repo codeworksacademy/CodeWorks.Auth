@@ -1,4 +1,4 @@
-namespace CWAuth.Interfaces;
+namespace CodeWorks.Auth.Interfaces;
 
 public interface IAccountIdentity
 {

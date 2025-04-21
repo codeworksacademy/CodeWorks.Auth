@@ -1,9 +1,9 @@
-using CWAuth.Extensions;
-using CWAuth.Interfaces;
-using CWAuth.Security;
+using CodeWorks.Auth.Extensions;
+using CodeWorks.Auth.Interfaces;
+using CodeWorks.Auth.Security;
 using Microsoft.AspNetCore.Identity;
 
-namespace CWAuth.Services;
+namespace CodeWorks.Auth.Services;
 
 public interface IAuthService<TIdentity> where TIdentity : IAccountIdentity
 {

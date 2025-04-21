@@ -1,4 +1,4 @@
-using CWAuth.Interfaces;
+using CodeWorks.Auth.Interfaces;
 
 public class AuthResult
 {

@@ -1,10 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using CWAuth.Interfaces;
+using CodeWorks.Auth.Interfaces;
 using Microsoft.IdentityModel.Tokens;
 
-namespace CWAuth.Security;
+namespace CodeWorks.Auth.Security;
 
 public class JwtService : IJwtService
 {

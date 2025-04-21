@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 
-namespace CWAuth.Security;
+namespace CodeWorks.Auth.Security;
 
 public class HasPermissionAttribute : AuthorizeAttribute
 {
