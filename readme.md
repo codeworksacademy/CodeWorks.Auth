@@ -24,7 +24,7 @@ A highly flexible, pluggable authentication module for .NET APIs that supports:
 Add the package (once published):
 
 ```bash
-Install-Package AuthModule
+Install-Package CodeWorks.Auth
 ```
 
 

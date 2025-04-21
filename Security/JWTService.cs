@@ -15,16 +15,30 @@ public class JwtService : IJwtService
     _options = options;
   }
 
-  public string GenerateToken(IAccountIdentity accountIdentity)
+  public string GenerateToken(IAccountIdentity user)
   {
     var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, accountIdentity.Id),
-            new(ClaimTypes.Email, accountIdentity.Email)
-        };
+    {
+      new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+      new Claim(ClaimTypes.Email, user.Email),
+    };
 
-    claims.AddRange(accountIdentity.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
-    claims.AddRange(accountIdentity.Permissions.Select(p => new Claim("permission", p)));
+    var roles = user.Roles?.ToArray() ?? Array.Empty<string>();
+    claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)).ToList());
+
+
+    var permissions = user.Permissions?.ToArray() ?? Array.Empty<string>();
+    claims.AddRange(permissions.Select(p => new Claim("permission", p)).ToList());
+
+    if (!string.IsNullOrEmpty(user.Name))
+      claims.Add(new Claim("name", user.Name));
+    if (!string.IsNullOrEmpty(user.Picture))
+      claims.Add(new Claim("picture", user.Picture));
+
+    claims.Add(new Claim("email_verified", user.IsEmailVerified.ToString()));
+
+    var unixTime = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds();
+    claims.Add(new Claim("iat", unixTime.ToString(), ClaimValueTypes.Integer64));
 
     var token = new JwtSecurityToken(
         issuer: _options.Issuer,
@@ -47,19 +61,46 @@ public class JwtService : IJwtService
     {
       return tokenHandler.ValidateToken(token, new TokenValidationParameters
       {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
         ValidateIssuer = true,
-        ValidIssuer = _options.Issuer,
         ValidateAudience = true,
-        ValidAudience = _options.Audience,
         ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = _options.Issuer,
+        ValidAudience = _options.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
+        ClockSkew = TimeSpan.Zero,
+
+        RoleClaimType = ClaimTypes.Role,
+        NameClaimType = ClaimTypes.Email
+
       }, out _);
     }
     catch
     {
       return null;
     }
+  }
+
+  public string RefreshToken(string staleToken, IAccountIdentity user, int expirationWindowInHours = 5)
+  {
+    var tokenHandler = new JwtSecurityTokenHandler();
+    var token = tokenHandler.ReadJwtToken(staleToken);
+
+    var refreshWindow = token.ValidTo + TimeSpan.FromHours(expirationWindowInHours);
+    var now = DateTime.UtcNow;
+
+    // Check if the token can be refreshed
+    if (refreshWindow < now)
+      throw new SecurityTokenExpiredException("Token is expired. Cannot refresh.");
+
+    return GenerateToken(user);
+  }
+
+  public string GetEmailFromToken(string token)
+  {
+    var tokenHandler = new JwtSecurityTokenHandler();
+    var jwtToken = tokenHandler.ReadJwtToken(token);
+    var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email || c.Type == "email");
+    return emailClaim?.Value ?? string.Empty;
   }
 }

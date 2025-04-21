@@ -10,6 +10,9 @@ public interface IAuthService<TIdentity> where TIdentity : IAccountIdentity
   Task<AuthResult> LoginAsync(string email, string password);
   Task<AuthResult> RegisterAsync(TIdentity user, string password);
   Task<AuthResult> ResetPasswordAsync(string email, string newPassword);
+  Task<AuthResult> RefreshAuthToken(string token, int refreshExtensionInHours = 1);
+  AuthResult GenerateAuthToken(IAccountIdentity user);
+
 }
 
 public class AuthService<TIdentity> : IAuthService<TIdentity> where TIdentity : class, IAccountIdentity
@@ -55,6 +58,27 @@ public class AuthService<TIdentity> : IAuthService<TIdentity> where TIdentity : 
     user.PasswordHash = PasswordHelper<IAccountIdentity>.HashPassword(user, newPassword);
     await _store.SaveAsync(user);
     return AuthResult.Success(user, _jwt.GenerateToken(user));
+  }
+
+  public AuthResult GenerateAuthToken(IAccountIdentity user)
+  {
+    if (user == null)
+      return AuthResult.Failure("Invalid credentials.");
+    return AuthResult.Success(user, _jwt.GenerateToken(user));
+  }
+
+
+  public async Task<AuthResult> RefreshAuthToken(string token, int refreshExtensionInHours = 1)
+  {
+    var email = _jwt.GetEmailFromToken(token);
+    var user = await _store.FindByEmailAsync(email);
+    if (user == null)
+      return AuthResult.Failure("Invalid credentials.");
+
+    var result = _jwt.RefreshToken(token, user, refreshExtensionInHours);
+    if (result == null)
+      return AuthResult.Failure("Invalid token.");
+    return AuthResult.Success(user, result);
   }
 
 }

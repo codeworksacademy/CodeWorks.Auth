@@ -2,12 +2,14 @@ namespace CWAuth.Interfaces;
 
 public interface IAccountIdentity
 {
-  string Id { get; }
-  string Email { get; }
-  string? Picture { get; }
+  string Id { get; set; }
+  string Email { get; set; }
+  string? Name { get; set; }
+  string? Picture { get; set; }
+
   string PasswordHash { get; set; }
   bool IsEmailVerified { get; set; }
 
-  IEnumerable<string> Roles { get; }
-  IEnumerable<string> Permissions { get; }
+  List<string> Roles { get; set; }
+  List<string> Permissions { get; set; }
 }
