@@ -9,7 +9,6 @@ A highly flexible, pluggable authentication module for .NET APIs that supports:
 - Magic link login support
 - Abstracted storage and email services for full control
 
----
 
 ## Features
 
@@ -19,7 +18,6 @@ A highly flexible, pluggable authentication module for .NET APIs that supports:
 - ✅ **Plug-and-play email auth**: Verification and magic link flows supported
 - ✅ **Ready for NuGet packaging**
 
----
 
 ## Installation
 
@@ -29,7 +27,6 @@ Add the package (once published):
 Install-Package AuthModule
 ```
 
----
 
 ## Getting Started
 
@@ -58,7 +55,6 @@ Manages tokens used for email verification or magic login.
 #### `IUserEmailSender`
 Sends emails to users with custom logic (SMTP, SendGrid, etc.).
 
----
 
 ### 3. Register the Module
 
@@ -73,7 +69,6 @@ services.AddAuthModule<AppUser, AppUserStore>(options =>
 new[] { "CanViewReports", "CanDeleteUsers" });
 ```
 
----
 
 ## Usage
 
@@ -96,7 +91,6 @@ await emailAuth.RequestMagicLinkAsync(email, "https://your.site/login");
 await emailAuth.RedeemMagicLinkAsync(token);
 ```
 
----
 
 ## Authorization
 
@@ -110,7 +104,55 @@ await emailAuth.RedeemMagicLinkAsync(token);
 [HasPermission("CanDeleteUsers")]
 ```
 
----
+
+## Email Setup
+
+### Development
+For local development, use a simple log-based sender:
+
+```csharp
+public class DevEmailSender : IUserEmailSender
+{
+    private readonly ILogger<DevEmailSender> _logger;
+
+    public DevEmailSender(ILogger<DevEmailSender> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task SendVerificationEmailAsync(IUser user, string tokenUrl)
+    {
+        _logger.LogInformation($"[DEV] Verification link for {user.Email}: {tokenUrl}");
+        return Task.CompletedTask;
+    }
+
+    public Task SendMagicLinkAsync(IUser user, string tokenUrl)
+    {
+        _logger.LogInformation($"[DEV] Magic login link for {user.Email}: {tokenUrl}");
+        return Task.CompletedTask;
+    }
+}
+```
+
+Register it conditionally:
+```csharp
+if (env.IsDevelopment())
+{
+    services.AddScoped<IUserEmailSender, DevEmailSender>();
+}
+```
+
+### Production
+Use a real SMTP service like MailKit to send actual emails. Here’s a starting point:
+
+- MailKit NuGet: https://www.nuget.org/packages/MailKit
+- Example usage guide: https://github.com/jstedfast/MailKit/blob/master/FAQ.md#sending-messages
+- SMTP via Cloudflare guide: [Use Your Domain's Email via SMTP](https://developers.cloudflare.com/email-routing/email-workers/send-email/#sending-email-using-workers-and-smtp)
+
+You can also configure third-party providers such as:
+- [SendGrid SMTP Docs](https://docs.sendgrid.com/for-developers/sending-email/smtp-api)
+- [Mailgun SMTP Docs](https://documentation.mailgun.com/en/latest/user_manual.html#sending-via-smtp)
+
 
 ## Extensibility
 
@@ -119,22 +161,12 @@ await emailAuth.RedeemMagicLinkAsync(token);
 - `IUserTokenStore` - token persistence
 - `IUserEmailSender` - email transport
 
----
 
 ## Roadmap
 
 - [ ] Multi-factor authentication
-- [ ] Password reset tokens
 - [ ] TOTP support
-- [ ] NuGet packaging & GitHub Actions
-
----
 
 ## License
 
 MIT or commercial dual-license (TBD).
-
----
-
-Happy authenticating ✨
-

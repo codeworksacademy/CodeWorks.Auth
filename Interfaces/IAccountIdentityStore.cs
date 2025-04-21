@@ -15,5 +15,10 @@ public interface IAccountIdentityStore<TIdentity> where TIdentity : IAccountIden
     return user;
   }
 
+  async public Task<bool> IsEmailVerifiedAsync(string email)
+  {
+    var user = await FindByEmailAsync(email);
+    return user != null && user.IsEmailVerified;
+  }
 
 }

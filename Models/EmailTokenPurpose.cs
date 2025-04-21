@@ -1,5 +1,6 @@
 public enum EmailTokenPurpose
 {
   EmailVerification,
-  MagicLinkLogin
+  MagicLinkLogin,
+  PasswordReset,
 }

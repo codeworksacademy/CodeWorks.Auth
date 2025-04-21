@@ -1,5 +1,7 @@
+using CWAuth.Extensions;
 using CWAuth.Interfaces;
 using CWAuth.Security;
+using Microsoft.AspNetCore.Identity;
 
 namespace CWAuth.Services;
 
@@ -80,4 +82,40 @@ public class EmailAuthService<TAccountIdentity> where TAccountIdentity : class, 
         await _tokenStore.MarkTokenUsedAsync(token);
         return user;
     }
+
+    public async Task RequestPasswordResetAsync(string email, string callbackBaseUrl)
+    {
+        var user = await _userStore.FindByEmailAsync(email);
+        if (user == null) return;
+
+        var token = TokenHelper.GenerateToken();
+        await _tokenStore.SaveTokenAsync(new TokenRecord
+        {
+            Token = token,
+            UserId = user.Id,
+            Purpose = EmailTokenPurpose.PasswordReset,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+        });
+
+        var url = $"{callbackBaseUrl}?token={token}";
+        await _emailSender.SendPasswordResetEmailAsync(user, url);
+    }
+
+    public async Task<bool> ResetPasswordAsync(string token, string newPassword)
+    {
+        var record = await _tokenStore.GetValidTokenAsync(token, EmailTokenPurpose.PasswordReset);
+        if (record == null || record.Used || record.ExpiresAt < DateTime.UtcNow)
+            return false;
+
+        var user = await _userStore.FindByIdAsync(record.UserId);
+        if (user == null)
+            return false;
+
+        user.PasswordHash = PasswordHelper<IAccountIdentity>.HashPassword(user, newPassword);
+        user.IsEmailVerified = true;
+        await _userStore.SaveAsync(user);
+        await _tokenStore.MarkTokenUsedAsync(token);
+        return true;
+    }
+
 }

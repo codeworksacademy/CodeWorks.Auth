@@ -4,6 +4,20 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <PackageId>CWAuth</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>CodeWorks</Authors>
+    <Company>CodeWorks</Company>
+    <Description>Flexible, pluggable authentication module for .NET APIs with JWT, email login, and MFA support.</Description>
+    <PackageTags>authentication jwt email dotnet</PackageTags>
+    <RepositoryUrl>https://github.com/codeworksacademy/CWAuth</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/codeworksacademy/CWAuth</PackageProjectUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
