@@ -5,21 +5,14 @@ using Microsoft.AspNetCore.Identity;
 
 namespace CodeWorks.Auth.Services;
 
-public class EmailAuthService<TAccountIdentity> where TAccountIdentity : class, IAccountIdentity
+public class EmailAuthService<TAccountIdentity>(
+    IAccountIdentityStore<TAccountIdentity> userStore,
+    IUserTokenStore tokenStore,
+    IUserEmailSender emailSender) where TAccountIdentity : class, IAccountIdentity
 {
-    private readonly IAccountIdentityStore<TAccountIdentity> _userStore;
-    private readonly IUserTokenStore _tokenStore;
-    private readonly IUserEmailSender _emailSender;
-
-    public EmailAuthService(
-        IAccountIdentityStore<TAccountIdentity> userStore,
-        IUserTokenStore tokenStore,
-        IUserEmailSender emailSender)
-    {
-        _userStore = userStore;
-        _tokenStore = tokenStore;
-        _emailSender = emailSender;
-    }
+    private readonly IAccountIdentityStore<TAccountIdentity> _userStore = userStore;
+    private readonly IUserTokenStore _tokenStore = tokenStore;
+    private readonly IUserEmailSender _emailSender = emailSender;
 
     #region Email Requests
 

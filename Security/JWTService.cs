@@ -19,21 +19,23 @@ public class JwtService : IJwtService
   {
     var claims = new List<Claim>
     {
-      new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-      new Claim(ClaimTypes.Email, user.Email),
+      new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+      new(ClaimTypes.Email, user.Email),
     };
 
-    var roles = user.Roles?.ToArray() ?? Array.Empty<string>();
-    claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)).ToList());
+    user.Name ??= user.Email.Substring(0, user.Email.IndexOf('@'));
+    user.Picture ??= "https://ui-avatars.com/api/?name=" + user.Name + "&color=fff&background=" + StringToHex(user.Email);
 
+    claims.Add(new Claim("name", user.Name));
+    claims.Add(new Claim("picture", user.Picture));
+    claims.Add(new Claim("id", user.Id));
+    claims.Add(new Claim("email", user.Email));
 
-    var permissions = user.Permissions?.ToArray() ?? Array.Empty<string>();
-    claims.AddRange(permissions.Select(p => new Claim("permission", p)).ToList());
+    var roles = user.Roles?.ToArray() ?? [];
+    claims.AddRange([.. roles.Select(r => new Claim(ClaimTypes.Role, r))]);
 
-    if (!string.IsNullOrEmpty(user.Name))
-      claims.Add(new Claim("name", user.Name));
-    if (!string.IsNullOrEmpty(user.Picture))
-      claims.Add(new Claim("picture", user.Picture));
+    var permissions = user.Permissions?.ToArray() ?? [];
+    claims.AddRange([.. permissions.Select(p => new Claim("permission", p))]);
 
     claims.Add(new Claim("email_verified", user.IsEmailVerified.ToString()));
 
@@ -69,10 +71,8 @@ public class JwtService : IJwtService
         ValidAudience = _options.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
         ClockSkew = TimeSpan.Zero,
-
         RoleClaimType = ClaimTypes.Role,
         NameClaimType = ClaimTypes.Email
-
       }, out _);
     }
     catch
@@ -103,4 +103,22 @@ public class JwtService : IJwtService
     var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email || c.Type == "email");
     return emailClaim?.Value ?? string.Empty;
   }
+
+
+  public static string StringToHex(string str = "")
+  {
+    try
+    {
+      if (string.IsNullOrEmpty(str)) return string.Empty;
+      if (str.Length > 6) str = str[..6];
+      return string.Join("", str.Select(c => ((int)c).ToString("x2")))[..6];
+    }
+    catch (Exception e)
+    {
+      Console.WriteLine(e.Message);
+      return string.Empty;
+    }
+  }
+
+
 }

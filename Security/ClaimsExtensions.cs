@@ -15,8 +15,8 @@ public static class ClaimsExtensions
     {
         return new TUser
         {
-            Id = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "",
-            Email = user.FindFirst(ClaimTypes.Email)?.Value ?? "",
+            Id = user.FindFirst("id")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "",
+            Email = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value ?? "",
             Name = user.FindFirst("name")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value ?? "",
             Picture = user.FindFirst("picture")?.Value ?? "",
             IsEmailVerified = user.FindFirst("email_verified")?.Value == "true",

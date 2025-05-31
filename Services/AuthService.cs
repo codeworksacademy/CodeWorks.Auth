@@ -15,16 +15,10 @@ public interface IAuthService<TIdentity> where TIdentity : IAccountIdentity
 
 }
 
-public class AuthService<TIdentity> : IAuthService<TIdentity> where TIdentity : class, IAccountIdentity
+public class AuthService<TIdentity>(IAccountIdentityStore<TIdentity> store, IJwtService jwt) : IAuthService<TIdentity> where TIdentity : class, IAccountIdentity
 {
-  private readonly IAccountIdentityStore<TIdentity> _store;
-  private readonly IJwtService _jwt;
-
-  public AuthService(IAccountIdentityStore<TIdentity> store, IJwtService jwt)
-  {
-    _store = store;
-    _jwt = jwt;
-  }
+  private readonly IAccountIdentityStore<TIdentity> _store = store;
+  private readonly IJwtService _jwt = jwt;
 
   public async Task<AuthResult> RegisterAsync(TIdentity user, string password)
   {

@@ -36,6 +36,26 @@ public static class ServiceCollectionExtensions
 
           options.Events = new JwtBearerEvents
           {
+
+            OnMessageReceived = context =>
+            {
+              // Check for Authorization header first
+              var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+              if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+              {
+                context.Token = authHeader["Bearer ".Length..].Trim();
+              }
+
+              // Fallback to access-token cookie if no token found
+              if (string.IsNullOrEmpty(context.Token) &&
+                    context.Request.Cookies.TryGetValue(jwtOptions.CookieName, out var cookieToken))
+              {
+                context.Token = cookieToken;
+              }
+
+              return Task.CompletedTask;
+            },
+
             OnAuthenticationFailed = context =>
             {
               Console.WriteLine("Token invalid: " + context.Exception.Message);
@@ -64,7 +84,6 @@ public static class ServiceCollectionExtensions
             ValidAudience = jwtOptions.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
             ClockSkew = TimeSpan.Zero,
-
             RoleClaimType = ClaimTypes.Role,
             NameClaimType = ClaimTypes.Email
           };
