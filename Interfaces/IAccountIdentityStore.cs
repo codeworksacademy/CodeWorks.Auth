@@ -7,6 +7,10 @@ public interface IAccountIdentityStore<TIdentity> where TIdentity : IAccountIden
   Task SaveAsync(TIdentity user);
   Task<TIdentity> FindByIdAsync(string id);
 
+  Task<TIdentity> FindByProviderAsync(string provider, string providerId);
+
+  
+
   async public Task<TIdentity> MarkEmailVerifiedAsync(TIdentity user)
   {
     if (user == null) throw new ArgumentNullException(nameof(user));

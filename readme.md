@@ -67,6 +67,9 @@ services.AddAuthModule<AppUser, AppUserStore>(options =>
     options.Expiration = TimeSpan.FromHours(1);
 },
 new[] { "CanViewReports", "CanDeleteUsers" });
+
+Services.AddOAuthProviders(builder.Configuration);
+Services.AddScoped<IOAuthService<AppUser>, OAuthService<AppUser>>();
 ```
 
 
@@ -142,6 +145,116 @@ if (env.IsDevelopment())
 }
 ```
 
+
+### AuthController Example
+
+```csharp
+[ApiController]
+[Route("api/auth")]
+public class OAuthController<TUser> : ControllerBase 
+    where TUser : IOAuthUser, new()
+{
+    private readonly IOAuthService<TUser> _oauthService;
+    private readonly SignInManager<TUser> _signInManager;
+
+    public OAuthController(
+        IOAuthService<TUser> oauthService,
+        SignInManager<TUser> signInManager)
+    {
+        _oauthService = oauthService;
+        _signInManager = signInManager;
+    }
+
+    [HttpGet("google")]
+    public IActionResult GoogleLogin(string returnUrl = "/")
+    {
+        var redirectUrl = Url.Action(
+            nameof(GoogleCallback), 
+            new { returnUrl });
+        
+        var properties = _signInManager.ConfigureExternalAuthenticationProperties(
+            "Google", 
+            redirectUrl);
+        
+        return Challenge(properties, "Google");
+    }
+
+    [HttpGet("google/callback")]
+    public async Task<IActionResult> GoogleCallback(string returnUrl = "/")
+    {
+        var info = await _signInManager.GetExternalLoginInfoAsync();
+        if (info == null)
+        {
+            return BadRequest(new { error = "Error loading external login info" });
+        }
+
+        var result = await _oauthService.HandleOAuthCallbackAsync(info);
+        
+        if (!result.Success)
+        {
+            return BadRequest(new { error = result.ErrorMessage });
+        }
+
+        // Return token to client
+        return Ok(new
+        {
+            token = result.Token,
+            user = new
+            {
+                result.User.Id,
+                result.User.Email,
+                result.User.Roles,
+                result.User.ProfilePictureUrl
+            }
+        });
+    }
+
+    [HttpGet("facebook")]
+    public IActionResult FacebookLogin(string returnUrl = "/")
+    {
+        var redirectUrl = Url.Action(
+            nameof(FacebookCallback), 
+            new { returnUrl });
+        
+        var properties = _signInManager.ConfigureExternalAuthenticationProperties(
+            "Facebook", 
+            redirectUrl);
+        
+        return Challenge(properties, "Facebook");
+    }
+
+    [HttpGet("facebook/callback")]
+    public async Task<IActionResult> FacebookCallback(string returnUrl = "/")
+    {
+        var info = await _signInManager.GetExternalLoginInfoAsync();
+        if (info == null)
+        {
+            return BadRequest(new { error = "Error loading external login info" });
+        }
+
+        var result = await _oauthService.HandleOAuthCallbackAsync(info);
+        
+        if (!result.Success)
+        {
+            return BadRequest(new { error = result.ErrorMessage });
+        }
+
+        return Ok(new
+        {
+            token = result.Token,
+            user = new
+            {
+                result.User.Id,
+                result.User.Email,
+                result.User.Roles,
+                result.User.ProfilePictureUrl
+            }
+        });
+    }
+}
+```
+
+
 ### Production
 Use a real SMTP service like MailKit to send actual emails. Here’s a starting point:
 
@@ -152,6 +265,49 @@ Use a real SMTP service like MailKit to send actual emails. Here’s a starting 
 You can also configure third-party providers such as:
 - [SendGrid SMTP Docs](https://docs.sendgrid.com/for-developers/sending-email/smtp-api)
 - [Mailgun SMTP Docs](https://documentation.mailgun.com/en/latest/user_manual.html#sending-via-smtp)
+
+
+
+### OAuth Provider Setup
+
+- Google OAuth:
+    - Go to [Google Cloud Console](https://console.cloud.google.com/)
+    - Create OAuth 2.0 credentials
+    - Add authorized redirect URI: https://yourdomain.com/api/auth/google/callback
+
+- Facebook OAuth:
+    - Go to [Facebook Developers](https://developers.facebook.com/)
+    - Create a new app
+    - Add Facebook Login product
+    - Add redirect URI: https://yourdomain.com/api/auth/facebook/callback
+
+
+1. Install Required NuGet Packages:
+```bash
+dotnet add package Microsoft.AspNetCore.Authentication.Google
+dotnet add package Microsoft.AspNetCore.Authentication.Facebook
+```
+
+2. Add OAuth Configuration to appsettings.json
+```json
+{
+  "Authentication": {
+    "Google": {
+      "ClientId": "your-google-client-id",
+      "ClientSecret": "your-google-client-secret"
+    },
+    "Facebook": {
+      "AppId": "your-facebook-app-id",
+      "AppSecret": "your-facebook-app-secret"
+    }
+  },
+  "Jwt": {
+    "Key": "your-signing-key",
+    "Issuer": "your-api",
+    "Audience": "your-users"
+  }
+}
+```
 
 
 ## Extensibility
