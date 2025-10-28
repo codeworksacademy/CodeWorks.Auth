@@ -117,7 +117,7 @@ public class OAuthService<TUser> : IOAuthService<TUser>
 
 
 
-    public async Task<string> GenerateOAuthStateAsync(string provider)
+    public virtual async Task<string> GenerateOAuthStateAsync(string provider)
     {
         // Generate secure state token to prevent CSRF
         var state = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
@@ -125,7 +125,7 @@ public class OAuthService<TUser> : IOAuthService<TUser>
         return state;
     }
 
-    public async Task<bool> ValidateOAuthStateAsync(string state)
+    public virtual async Task<bool> ValidateOAuthStateAsync(string state)
     {
         // Validate and consume state token
         // Implement in token store
