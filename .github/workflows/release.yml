@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    
 
 env:
   NUGET_AUTH_TOKEN: ${{secrets.NUGET_API_KEY}}
