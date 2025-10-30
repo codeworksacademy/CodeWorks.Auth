@@ -3,12 +3,9 @@ using Microsoft.AspNetCore.Identity;
 
 namespace CodeWorks.Auth.Interfaces;
 
-public interface IOAuthService<TUser> where TUser : IAccountIdentity
+public interface IOAuthService<TIdentity> where TIdentity : IAccountIdentity, new()
 {
-  Task<AuthResult<TUser>> HandleOAuthCallbackAsync(
-      ExternalLoginInfo loginInfo);
-
-  Task<string> GenerateOAuthStateAsync(string provider);
-
+  Task<AuthResult<TIdentity>> HandleOAuthCallbackAsync(ExternalLoginInfo loginInfo);
+  Task<string> GenerateOAuthStateAsync(string provider, string? returnUrl = null);
   Task<bool> ValidateOAuthStateAsync(string state);
 }

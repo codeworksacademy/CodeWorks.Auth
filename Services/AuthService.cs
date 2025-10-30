@@ -6,16 +6,6 @@ using Microsoft.AspNetCore.Identity;
 
 namespace CodeWorks.Auth.Services;
 
-public interface IAuthService<TIdentity> where TIdentity : IAccountIdentity
-{
-  Task<AuthResult<TIdentity>> LoginAsync(string email, string password);
-  Task<AuthResult<TIdentity>> RegisterAsync(TIdentity user, string password);
-  Task<AuthResult<TIdentity>> ResetPasswordAsync(string email, string newPassword);
-  Task<AuthResult<TIdentity>> RefreshAuthToken(string token, int refreshExtensionInHours = 1);
-  AuthResult<TIdentity> GenerateAuthToken(TIdentity user);
-
-}
-
 public class AuthService<TIdentity>(IAccountIdentityStore<TIdentity> store, IJwtService jwt) : IAuthService<TIdentity> where TIdentity : class, IAccountIdentity
 {
   private readonly IAccountIdentityStore<TIdentity> _store = store;

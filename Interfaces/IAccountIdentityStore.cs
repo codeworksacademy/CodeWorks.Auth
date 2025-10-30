@@ -9,7 +9,10 @@ public interface IAccountIdentityStore<TIdentity> where TIdentity : IAccountIden
 
   Task<TIdentity> FindByProviderAsync(string provider, string providerId);
 
-  
+  Task CreateAsync(TIdentity user);
+  Task DeleteAsync(string id);
+
+
 
   async public Task<TIdentity> MarkEmailVerifiedAsync(TIdentity user)
   {

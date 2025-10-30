@@ -6,22 +6,15 @@ using CodeWorks.Auth.Models;
 
 namespace CodeWorks.Auth.Services;
 
-public interface IOAuthService<TIdentity> where TIdentity : IAccountIdentity, new()
-{
-    Task<AuthResult<TIdentity>> HandleOAuthCallbackAsync(ExternalLoginInfo loginInfo);
-    Task<string> GenerateOAuthStateAsync(string provider, string? returnUrl = null);
-    Task<bool> ValidateOAuthStateAsync(string state);
-}
-
 public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity : class, IAccountIdentity, new()
 {
-    private readonly IUserStore<TIdentity> _userStore;
+    private readonly IAccountIdentityStore<TIdentity> _userStore;
     private readonly IAuthService<TIdentity> _authService;
     private readonly IOAuthStateStore _oauthStateStore;
     private readonly ILogger<OAuthService<TIdentity>> _logger;
 
     public OAuthService(
-        IUserStore<TIdentity> userStore,
+        IAccountIdentityStore<TIdentity> userStore,
         IAuthService<TIdentity> authService,
         IOAuthStateStore oauthStateStore,
         ILogger<OAuthService<TIdentity>> logger)
@@ -123,7 +116,7 @@ public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity 
                     existingUser.ProfilePictureUrl = picture;
                 }
 
-                await _userStore.UpdateAsync(existingUser);
+                await _userStore.SaveAsync(existingUser);
 
                 var token = _authService.GenerateAuthToken(existingUser);
                 return AuthResult<TIdentity>.Success(existingUser, token.Token!);
@@ -176,16 +169,4 @@ public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity 
                 return true;
             });
     }
-}
-
-
-// Add to existing IUserStore interface
-public interface IUserStore<TUser> where TUser : IAccountIdentity
-{
-    Task<TUser> FindByEmailAsync(string email);
-    Task<TUser> FindByIdAsync(string id);
-    Task<TUser> FindByProviderAsync(string provider, string providerId);
-    Task CreateAsync(TUser user);
-    Task UpdateAsync(TUser user);
-    Task DeleteAsync(string id);
 }
