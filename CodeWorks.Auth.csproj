@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
     <PackageId>CodeWorks.Auth</PackageId>
-    <Version>0.0.6</Version>
+    <Version>0.0.7</Version>
     <Authors>CodeWorks</Authors>
     <Company>CodeWorks</Company>
     <Description>Flexible, pluggable authentication module for .NET APIs with JWT, email login, and MFA support.</Description>
