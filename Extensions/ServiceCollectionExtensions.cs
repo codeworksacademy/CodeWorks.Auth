@@ -13,49 +13,45 @@ namespace CodeWorks.Auth.Extensions;
 public static class ServiceCollectionExtensions
 {
   public static IServiceCollection AddAuthModule<TAccountIdentity, TAccountIdentityStore>(
-      this IServiceCollection services,
-      Action<JwtOptions> configureJwtOptions,
-      IEnumerable<string>? permissionPolicies = null
-  )
-      where TAccountIdentity : class, IAccountIdentity
-      where TAccountIdentityStore : class, IAccountIdentityStore<TAccountIdentity>
+    this IServiceCollection services,
+    Action<JwtOptions> configureJwtOptions,
+    IEnumerable<string>? permissionPolicies = null
+)
+    where TAccountIdentity : class, IAccountIdentity
+    where TAccountIdentityStore : class, IAccountIdentityStore<TAccountIdentity>
   {
+    // --- Configure options ---
     var jwtOptions = new JwtOptions();
-    configureJwtOptions(jwtOptions);
-
+    configureJwtOptions(jwtOptions); // consumer can modify ClaimMap here
     services.AddSingleton(jwtOptions);
-    services.AddSingleton<IJwtService, JwtService>();
+
+    // --- Register JwtService with options.ClaimMap ---
+    services.AddSingleton<IJwtService>(sp =>
+        new JwtService(jwtOptions, jwtOptions.ClaimMap));
+
+    // --- Register stores & auth services ---
     services.AddScoped<IAccountIdentityStore<TAccountIdentity>, TAccountIdentityStore>();
     services.AddScoped<IAuthService<TAccountIdentity>, AuthService<TAccountIdentity>>();
     services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 
-
+    // --- Authentication & authorization (same as before) ---
     services.AddAuthentication("Bearer")
         .AddJwtBearer("Bearer", options =>
         {
-
           options.Events = new JwtBearerEvents
           {
-
             OnMessageReceived = context =>
             {
-              // Check for Authorization header first
               var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
               if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
-              {
                 context.Token = authHeader["Bearer ".Length..].Trim();
-              }
 
-              // Fallback to access-token cookie if no token found
               if (string.IsNullOrEmpty(context.Token) &&
-                    context.Request.Cookies.TryGetValue(jwtOptions.CookieName, out var cookieToken))
-              {
+                      context.Request.Cookies.TryGetValue(jwtOptions.CookieName, out var cookieToken))
                 context.Token = cookieToken;
-              }
 
               return Task.CompletedTask;
             },
-
             OnAuthenticationFailed = context =>
             {
               Console.WriteLine("Token invalid: " + context.Exception.Message);
@@ -63,15 +59,16 @@ public static class ServiceCollectionExtensions
             },
             OnTokenValidated = context =>
             {
+              // Use claim map for dynamic NameClaimType / RoleClaimType
               var identity = new ClaimsIdentity(
-                    context.Principal!.Claims,
-                    "jwt",
-                    "email",
-                    "role"
-                );
+                      context.Principal!.Claims,
+                      "jwt",
+                      jwtOptions.ClaimMap.TryGetValue("Email", out var nameClaim) ? nameClaim : "email",
+                      jwtOptions.ClaimMap.TryGetValue("Roles", out var roleClaim) ? roleClaim : ClaimTypes.Role
+                  );
               context.Principal = new ClaimsPrincipal(identity);
               return Task.CompletedTask;
-            },
+            }
           };
 
           options.TokenValidationParameters = new TokenValidationParameters
@@ -89,19 +86,18 @@ public static class ServiceCollectionExtensions
           };
         });
 
-
+    // --- Permission policies ---
     services.AddAuthorization(options =>
     {
       if (permissionPolicies != null)
       {
         foreach (var permission in permissionPolicies)
-        {
           options.AddPolicy(permission, policy =>
-                      policy.Requirements.Add(new PermissionRequirement(permission)));
-        }
+              policy.Requirements.Add(new PermissionRequirement(permission)));
       }
     });
 
     return services;
   }
+
 }

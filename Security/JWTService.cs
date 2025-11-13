@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using CodeWorks.Auth.Interfaces;
+using CodeWorks.Auth.Models;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CodeWorks.Auth.Security;
@@ -9,39 +10,63 @@ namespace CodeWorks.Auth.Security;
 public class JwtService : IJwtService
 {
   private readonly JwtOptions _options;
+  private readonly JwtClaimMap _claimMap;
 
-  public JwtService(JwtOptions options)
+  public JwtService(JwtOptions options, JwtClaimMap claimMap)
   {
     _options = options;
+    _claimMap = claimMap;
   }
 
   public string GenerateToken(IAccountIdentity user)
   {
-    var claims = new List<Claim>
+    if (user == null) throw new ArgumentNullException(nameof(user));
+
+    // --- Step 1: Ensure fallback values for Name & Picture ---
+    if (string.IsNullOrWhiteSpace(user.Name) && !string.IsNullOrWhiteSpace(user.Email))
+      user.Name = user.Email[..user.Email.IndexOf('@')];
+
+    if (string.IsNullOrWhiteSpace(user.Picture) && !string.IsNullOrWhiteSpace(user.Email))
+      user.Picture = $"https://ui-avatars.com/api/?name={user.Name}&color=fff&background={StringToHex(user.Email)}";
+
+    // --- Step 2: Map all properties in claim map ---
+    var claims = new List<Claim>();
+
+    foreach (var kvp in _claimMap)
     {
-      new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-      new(ClaimTypes.Email, user.Email),
-    };
+      var property = user.GetType().GetProperty(kvp.Key);
+      if (property == null) continue;
 
-    user.Name ??= user.Email.Substring(0, user.Email.IndexOf('@'));
-    user.Picture ??= "https://ui-avatars.com/api/?name=" + user.Name + "&color=fff&background=" + StringToHex(user.Email);
+      var value = property.GetValue(user);
+      if (value == null) continue;
 
-    claims.Add(new Claim("name", user.Name));
-    claims.Add(new Claim("picture", user.Picture));
-    claims.Add(new Claim("id", user.Id));
-    claims.Add(new Claim("email", user.Email));
+      switch (value)
+      {
+        case IEnumerable<string> list when kvp.Value != ClaimTypes.Email:
+          var items = list.Where(v => !string.IsNullOrWhiteSpace(v)).ToList();
+          if (items.Count > 0)
+            claims.AddRange(items.Select(v => new Claim(kvp.Value, v)));
+          break;
 
-    var roles = user.Roles?.ToArray() ?? [];
-    claims.AddRange([.. roles.Select(r => new Claim(ClaimTypes.Role, r))]);
+        case bool b:
+          claims.Add(new Claim(kvp.Value, b.ToString()));
+          break;
 
-    var permissions = user.Permissions?.ToArray() ?? [];
-    claims.AddRange([.. permissions.Select(p => new Claim("permission", p))]);
+        case DateTime dt:
+          claims.Add(new Claim(kvp.Value, dt.ToString("o"))); // ISO 8601
+          break;
 
-    claims.Add(new Claim("email_verified", user.IsEmailVerified.ToString()));
+        default:
+          claims.Add(new Claim(kvp.Value, value.ToString()!));
+          break;
+      }
+    }
 
-    var unixTime = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds();
-    claims.Add(new Claim("iat", unixTime.ToString(), ClaimValueTypes.Integer64));
+    // --- Step 3: Standard JWT claims ---
+    claims.Add(new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()));
+    claims.Add(new Claim("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64));
 
+    // --- Step 4: Create token ---
     var token = new JwtSecurityToken(
         issuer: _options.Issuer,
         audience: _options.Audience,
@@ -49,12 +74,12 @@ public class JwtService : IJwtService
         expires: DateTime.UtcNow.Add(_options.Expiration),
         signingCredentials: new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
-            SecurityAlgorithms.HmacSha256
-        )
+            SecurityAlgorithms.HmacSha256)
     );
 
     return new JwtSecurityTokenHandler().WriteToken(token);
   }
+
 
   public ClaimsPrincipal? ValidateToken(string token)
   {
