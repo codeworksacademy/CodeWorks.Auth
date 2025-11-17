@@ -22,8 +22,9 @@ public static class ServiceCollectionExtensions
   {
     // --- Configure options ---
     var jwtOptions = new JwtOptions();
-    configureJwtOptions(jwtOptions); // consumer can modify ClaimMap here
+    configureJwtOptions(jwtOptions);
     services.AddSingleton(jwtOptions);
+    ClaimsExtensions.Configure(jwtOptions.ClaimMap);
 
     // --- Register JwtService with options.ClaimMap ---
     services.AddSingleton<IJwtService>(sp =>
@@ -42,7 +43,7 @@ public static class ServiceCollectionExtensions
           {
             OnMessageReceived = context =>
             {
-              var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+              var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
               if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
                 context.Token = authHeader["Bearer ".Length..].Trim();
 
@@ -80,7 +81,7 @@ public static class ServiceCollectionExtensions
             ValidIssuer = jwtOptions.Issuer,
             ValidAudience = jwtOptions.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
-            ClockSkew = TimeSpan.Zero,
+            ClockSkew = TimeSpan.FromMinutes(5),
             RoleClaimType = ClaimTypes.Role,
             NameClaimType = ClaimTypes.Email
           };

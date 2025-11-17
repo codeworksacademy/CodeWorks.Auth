@@ -7,16 +7,10 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace CodeWorks.Auth.Security;
 
-public class JwtService : IJwtService
+public class JwtService(JwtOptions options, JwtClaimMap claimMap) : IJwtService
 {
-  private readonly JwtOptions _options;
-  private readonly JwtClaimMap _claimMap;
-
-  public JwtService(JwtOptions options, JwtClaimMap claimMap)
-  {
-    _options = options;
-    _claimMap = claimMap;
-  }
+  private readonly JwtOptions _options = options;
+  private readonly JwtClaimMap _claimMap = claimMap;
 
   public string GenerateToken(IAccountIdentity user)
   {
@@ -95,7 +89,7 @@ public class JwtService : IJwtService
         ValidIssuer = _options.Issuer,
         ValidAudience = _options.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
-        ClockSkew = TimeSpan.Zero,
+        ClockSkew = TimeSpan.FromMinutes(5),
         RoleClaimType = ClaimTypes.Role,
         NameClaimType = ClaimTypes.Email
       }, out _);

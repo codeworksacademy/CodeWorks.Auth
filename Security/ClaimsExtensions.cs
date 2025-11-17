@@ -48,19 +48,16 @@ public static class ClaimsExtensions
     public static TUser ToUser<TUser>(this ClaimsPrincipal user)
             where TUser : IAccountIdentity, new()
     {
-        JwtClaimMap map = _claimMap ?? [];
-        Configure(map); // ensure defaults
-
         var instance = new TUser();
 
-        foreach (var kvp in map)
+        foreach (var kvp in _claimMap)
         {
             var property = typeof(TUser).GetProperty(kvp.Key, BindingFlags.Public | BindingFlags.Instance);
             if (property == null || !property.CanWrite)
                 continue;
 
             var claims = user.Claims.Where(c => c.Type == kvp.Value).ToList();
-            if (!claims.Any()) continue;
+            if (claims.Count == 0) continue;
 
             try
             {
