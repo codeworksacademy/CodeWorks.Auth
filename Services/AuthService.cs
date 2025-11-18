@@ -11,13 +11,13 @@ public class AuthService<TIdentity>(IAccountIdentityStore<TIdentity> store, IJwt
   private readonly IAccountIdentityStore<TIdentity> _store = store;
   private readonly IJwtService _jwt = jwt;
 
-  public async Task<AuthResult<TIdentity>> RegisterAsync(TIdentity user, string password)
+  public async Task<AuthResult<TIdentity>> RegisterAsync(TIdentity userData, string password)
   {
-    if (await _store.EmailExistsAsync(user.Email))
+    if (await _store.EmailExistsAsync(userData.Email))
       return AuthResult<TIdentity>.Failure("Email already registered.");
 
-    user.PasswordHash = PasswordHelper<TIdentity>.HashPassword(user, password);
-    await _store.SaveAsync(user);
+    userData.PasswordHash = PasswordHelper<TIdentity>.HashPassword(userData, password);
+    var user = await _store.CreateAsync(userData);
     return AuthResult<TIdentity>.Success(user, _jwt.GenerateToken(user));
   }
 
@@ -41,7 +41,7 @@ public class AuthService<TIdentity>(IAccountIdentityStore<TIdentity> store, IJwt
       return AuthResult<TIdentity>.Failure("User not found.");
 
     user.PasswordHash = PasswordHelper<TIdentity>.HashPassword(user, newPassword);
-    await _store.SaveAsync(user);
+    await _store.UpdateAsync(user);
     return AuthResult<TIdentity>.Success(user, _jwt.GenerateToken(user));
   }
 

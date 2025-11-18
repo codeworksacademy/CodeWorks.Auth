@@ -4,12 +4,10 @@ public interface IAccountIdentityStore<TIdentity> where TIdentity : IAccountIden
 {
   Task<TIdentity> FindByEmailAsync(string email);
   Task<bool> EmailExistsAsync(string email);
-  Task SaveAsync(TIdentity user);
+  Task<TIdentity> UpdateAsync(TIdentity user);
   Task<TIdentity> FindByIdAsync(string id);
-
   Task<TIdentity> FindByProviderAsync(string provider, string providerId);
-
-  Task CreateAsync(TIdentity user);
+  Task<TIdentity> CreateAsync(TIdentity user);
   Task DeleteAsync(string id);
 
 
@@ -18,7 +16,7 @@ public interface IAccountIdentityStore<TIdentity> where TIdentity : IAccountIden
   {
     if (user == null) throw new ArgumentNullException(nameof(user));
     user.IsEmailVerified = true;
-    await SaveAsync(user);
+    await UpdateAsync(user);
     return user;
   }
 

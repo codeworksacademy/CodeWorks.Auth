@@ -116,7 +116,7 @@ public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity 
                     existingUser.ProfilePictureUrl = picture;
                 }
 
-                await _userStore.SaveAsync(existingUser);
+                await _userStore.UpdateAsync(existingUser);
 
                 var token = _authService.GenerateAuthToken(existingUser);
                 return AuthResult<TIdentity>.Success(existingUser, token.Token!);

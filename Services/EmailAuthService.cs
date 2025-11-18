@@ -131,7 +131,7 @@ public class EmailAuthService<TAccountIdentity>(
 
         user.PasswordHash = PasswordHelper<IAccountIdentity>.HashPassword(user, newPassword);
         user.IsEmailVerified = true;
-        await _userStore.SaveAsync(user);
+        await _userStore.UpdateAsync(user);
         await _tokenStore.MarkTokenUsedAsync(token);
         return true;
     }
