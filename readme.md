@@ -47,6 +47,40 @@ options.RefreshTokenExpiration = TimeSpan.FromDays(14);
 By default, refresh tokens are stored hashed and kept in an in-memory store (`IRefreshTokenStore`).
 Replace with your own persistent store for production.
 
+### Distributed stores (Redis / IDistributedCache)
+
+For multi-instance deployments, switch auth stores to distributed cache-backed implementations:
+
+```csharp
+services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = Configuration["Redis:ConnectionString"];
+});
+
+services.AddAuthModule<AppUser, AppUserStore>(
+    options =>
+    {
+        options.SigningKey = Configuration["Jwt:Key"]!;
+        options.Issuer = "your-api";
+        options.Audience = "your-users";
+    },
+    configureStoreOptions: store =>
+    {
+        store.CleanupInterval = TimeSpan.FromMinutes(5);
+        store.RevokedTokenRetention = TimeSpan.FromHours(12);
+    });
+
+services.AddAuthDistributedStores();
+```
+
+`AddAuthDistributedStores()` swaps these defaults:
+
+- `IRefreshTokenStore` → `DistributedCacheRefreshTokenStore`
+- `IPasskeyChallengeStore` → `DistributedCachePasskeyChallengeStore`
+- `IPasskeyCredentialStore` → `DistributedCachePasskeyCredentialStore`
+
+The built-in cleanup hosted service (`AuthStoreCleanupService`) runs automatically for in-memory stores and is a no-op for distributed cache entries that already expire in cache.
+
 ## MFA: Authenticator Apps + Recovery Codes
 
 The module includes built-in TOTP primitives for authenticator apps:
@@ -107,6 +141,12 @@ services.AddAuthModule<AppUser, AppUserStore>(
         passkey.ChallengeLifetime = TimeSpan.FromMinutes(5);
     });
 ```
+
+### Replay/race hardening behavior
+
+- Refresh token rotation uses consume-then-rotate semantics (`TryConsumeActiveTokenAsync`) to reduce replay windows.
+- Passkey challenges are consumed once and removed during verification (`ConsumeAsync`), preventing challenge reuse.
+- In distributed mode, atomicity depends on your cache provider capabilities; for strict cross-node transactional guarantees, use database-backed store implementations.
 
 ### Optional Login Abuse Protection
 

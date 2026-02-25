@@ -5,6 +5,9 @@ namespace CodeWorks.Auth.Interfaces;
 public interface IPasskeyChallengeStore
 {
   Task SaveAsync(PasskeyChallengeRecord challenge);
-  Task<PasskeyChallengeRecord?> GetAsync(string challenge);
-  Task DeleteAsync(string challenge);
+  Task<PasskeyChallengeRecord?> ConsumeAsync(
+      string challenge,
+      PasskeyChallengePurpose expectedPurpose,
+      string? expectedUserId = null);
+  Task CleanupExpiredAsync();
 }

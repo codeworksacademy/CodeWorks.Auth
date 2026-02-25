@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CodeWorks.Auth.Extensions;
@@ -18,7 +19,8 @@ public static class ServiceCollectionExtensions
     this IServiceCollection services,
     Action<JwtOptions> configureJwtOptions,
     IEnumerable<string>? permissionPolicies = null,
-    Action<PasskeyOptions>? configurePasskeyOptions = null
+    Action<PasskeyOptions>? configurePasskeyOptions = null,
+    Action<AuthStoreOptions>? configureStoreOptions = null
 )
     where TAccountIdentity : class, IAccountIdentity
     where TAccountIdentityStore : class, IAccountIdentityStore<TAccountIdentity>
@@ -41,6 +43,10 @@ public static class ServiceCollectionExtensions
     configurePasskeyOptions?.Invoke(passkeyOptions);
     services.AddSingleton(passkeyOptions);
 
+    var storeOptions = new AuthStoreOptions();
+    configureStoreOptions?.Invoke(storeOptions);
+    services.AddSingleton(storeOptions);
+
     // --- Register JwtService with options.ClaimMap ---
     services.AddSingleton<IJwtService>(sp =>
         new JwtService(jwtOptions, jwtOptions.ClaimMap));
@@ -48,16 +54,19 @@ public static class ServiceCollectionExtensions
     // --- Register stores & auth services ---
     services.AddScoped<IAccountIdentityStore<TAccountIdentity>, TAccountIdentityStore>();
     services.AddScoped<IAuthService<TAccountIdentity>, AuthService<TAccountIdentity>>();
-    services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
+    services.AddSingleton<InMemoryRefreshTokenStore>();
+    services.AddSingleton<IRefreshTokenStore>(sp => sp.GetRequiredService<InMemoryRefreshTokenStore>());
     services.AddScoped<IRefreshTokenService<TAccountIdentity>, RefreshTokenService<TAccountIdentity>>();
     services.AddSingleton<IUserMfaStore, InMemoryUserMfaStore>();
     services.AddScoped<IMfaService<TAccountIdentity>, MfaService<TAccountIdentity>>();
-    services.AddSingleton<IPasskeyChallengeStore, InMemoryPasskeyChallengeStore>();
+    services.AddSingleton<InMemoryPasskeyChallengeStore>();
+    services.AddSingleton<IPasskeyChallengeStore>(sp => sp.GetRequiredService<InMemoryPasskeyChallengeStore>());
     services.AddSingleton<IPasskeyCredentialStore, InMemoryPasskeyCredentialStore>();
     services.AddSingleton<IPasskeyResponseVerifier, NoOpPasskeyResponseVerifier>();
     services.AddScoped<IPasskeyService<TAccountIdentity>, PasskeyService<TAccountIdentity>>();
     services.AddSingleton<IAuthAbuseProtector, NoOpAuthAbuseProtector>();
     services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+    services.AddHostedService<AuthStoreCleanupService>();
 
     // --- Authentication & authorization (same as before) ---
     services.AddAuthentication("Bearer")
@@ -124,6 +133,20 @@ public static class ServiceCollectionExtensions
               policy.Requirements.Add(new PermissionRequirement(permission)));
       }
     });
+
+    return services;
+  }
+
+  public static IServiceCollection AddAuthDistributedStores(this IServiceCollection services)
+  {
+    services.AddSingleton<DistributedCacheRefreshTokenStore>();
+    services.AddSingleton<IRefreshTokenStore>(sp => sp.GetRequiredService<DistributedCacheRefreshTokenStore>());
+
+    services.AddSingleton<DistributedCachePasskeyChallengeStore>();
+    services.AddSingleton<IPasskeyChallengeStore>(sp => sp.GetRequiredService<DistributedCachePasskeyChallengeStore>());
+
+    services.AddSingleton<DistributedCachePasskeyCredentialStore>();
+    services.AddSingleton<IPasskeyCredentialStore>(sp => sp.GetRequiredService<DistributedCachePasskeyCredentialStore>());
 
     return services;
   }

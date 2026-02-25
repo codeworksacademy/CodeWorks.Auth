@@ -45,9 +45,9 @@ public class RefreshTokenService<TIdentity> : IRefreshTokenService<TIdentity>
   public async Task<AuthSessionResult<TIdentity>> RotateAsync(string refreshToken)
   {
     var refreshTokenHash = TokenHelper.HashToken(refreshToken);
-    var currentRecord = await _refreshTokenStore.GetTokenAsync(refreshTokenHash);
+    var currentRecord = await _refreshTokenStore.TryConsumeActiveTokenAsync(refreshTokenHash);
 
-    if (currentRecord == null || !currentRecord.IsActive)
+    if (currentRecord == null)
       return AuthSessionResult<TIdentity>.Failure("Invalid refresh token.");
 
     var user = await _store.FindByIdAsync(currentRecord.UserId);

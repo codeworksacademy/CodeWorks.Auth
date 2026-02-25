@@ -70,40 +70,36 @@ public class PasskeyService<TIdentity> : IPasskeyService<TIdentity> where TIdent
     if (string.IsNullOrWhiteSpace(challenge))
       return false;
 
-    var challengeRecord = await _challengeStore.GetAsync(challenge);
-    if (!IsValidChallenge(challengeRecord, PasskeyChallengePurpose.Registration, user.Id))
+    var challengeRecord = await _challengeStore.ConsumeAsync(
+        challenge,
+        PasskeyChallengePurpose.Registration,
+        user.Id);
+    if (challengeRecord == null)
       return false;
 
-    try
+    var validation = await _responseVerifier.VerifyRegistrationAsync(
+        attestationResponseJson,
+        challenge,
+        user.Id,
+        _options);
+
+    if (!validation.IsValid ||
+        string.IsNullOrWhiteSpace(validation.CredentialId) ||
+        string.IsNullOrWhiteSpace(validation.PublicKey))
     {
-      var validation = await _responseVerifier.VerifyRegistrationAsync(
-          attestationResponseJson,
-          challenge,
-          user.Id,
-          _options);
-
-      if (!validation.IsValid ||
-          string.IsNullOrWhiteSpace(validation.CredentialId) ||
-          string.IsNullOrWhiteSpace(validation.PublicKey))
-      {
-        return false;
-      }
-
-      await _credentialStore.SaveAsync(new PasskeyCredentialRecord
-      {
-        CredentialId = validation.CredentialId,
-        PublicKey = validation.PublicKey,
-        UserId = user.Id,
-        SignCount = validation.SignCount,
-        CreatedAt = DateTime.UtcNow
-      });
-
-      return true;
+      return false;
     }
-    finally
+
+    await _credentialStore.SaveAsync(new PasskeyCredentialRecord
     {
-      await _challengeStore.DeleteAsync(challenge);
-    }
+      CredentialId = validation.CredentialId,
+      PublicKey = validation.PublicKey,
+      UserId = user.Id,
+      SignCount = validation.SignCount,
+      CreatedAt = DateTime.UtcNow
+    });
+
+    return true;
   }
 
   public async Task<PasskeyOperationResult> BeginAuthenticationAsync(string? userId = null)
@@ -143,8 +139,10 @@ public class PasskeyService<TIdentity> : IPasskeyService<TIdentity> where TIdent
     if (string.IsNullOrWhiteSpace(challenge) || string.IsNullOrWhiteSpace(credentialId))
       return null;
 
-    var challengeRecord = await _challengeStore.GetAsync(challenge);
-    if (!IsValidChallenge(challengeRecord, PasskeyChallengePurpose.Authentication))
+    var challengeRecord = await _challengeStore.ConsumeAsync(
+      challenge,
+      PasskeyChallengePurpose.Authentication);
+    if (challengeRecord == null)
       return null;
 
     var credential = await _credentialStore.GetAsync(credentialId);
@@ -157,42 +155,17 @@ public class PasskeyService<TIdentity> : IPasskeyService<TIdentity> where TIdent
       return null;
     }
 
-    try
-    {
-      var validation = await _responseVerifier.VerifyAuthenticationAsync(
-          assertionResponseJson,
-          challenge,
-          credential,
-          _options);
+    var validation = await _responseVerifier.VerifyAuthenticationAsync(
+        assertionResponseJson,
+        challenge,
+        credential,
+        _options);
 
-      if (!validation.IsValid)
-        return null;
+    if (!validation.IsValid)
+      return null;
 
-      await _credentialStore.UpdateUsageAsync(credentialId, validation.NewSignCount, DateTime.UtcNow);
-      return await _identityStore.FindByIdAsync(credential.UserId);
-    }
-    finally
-    {
-      await _challengeStore.DeleteAsync(challenge);
-    }
-  }
-
-  private static bool IsValidChallenge(
-      PasskeyChallengeRecord? challenge,
-      PasskeyChallengePurpose expectedPurpose,
-      string? expectedUserId = null)
-  {
-    if (challenge == null) return false;
-    if (challenge.ExpiresAt < DateTime.UtcNow) return false;
-    if (challenge.Purpose != expectedPurpose) return false;
-
-    if (!string.IsNullOrWhiteSpace(expectedUserId) &&
-        !string.Equals(challenge.UserId, expectedUserId, StringComparison.Ordinal))
-    {
-      return false;
-    }
-
-    return true;
+    await _credentialStore.UpdateUsageAsync(credentialId, validation.NewSignCount, DateTime.UtcNow);
+    return await _identityStore.FindByIdAsync(credential.UserId);
   }
 
   private static string? ExtractChallenge(string responseJson)
