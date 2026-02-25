@@ -18,6 +18,34 @@ A highly flexible, pluggable authentication module for .NET APIs that supports:
 - ✅ **Plug-and-play email auth**: Verification and magic link flows supported
 - ✅ **Ready for NuGet packaging**
 
+## Typed Account IDs
+
+Account IDs are now flexible. You can use `string`, `Guid`, `int`, or any `notnull` type.
+
+- `IAccountIdentityBase` is used internally by the library.
+- `IAccountIdentity<TId>` enables typed IDs.
+- `IAccountIdentity` remains as a convenience alias for `IAccountIdentity<string>`.
+
+Example with `Guid` IDs:
+
+```csharp
+public class AppUser : IAccountIdentity<Guid>
+{
+    public Guid Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Picture { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public bool IsEmailVerified { get; set; }
+    public string? Provider { get; set; }
+    public string? ProviderId { get; set; }
+    public string? ProfilePictureUrl { get; set; }
+    public DateTime? LastLoginAt { get; set; }
+    public List<string> Roles { get; set; } = [];
+    public List<string> Permissions { get; set; } = [];
+}
+```
+
 ## Security Hardening Notes (2026-02)
 
 - JWT refresh now validates signature, issuer, audience, and token algorithm before issuing a new token.
@@ -71,6 +99,72 @@ services.AddAuthModule<AppUser, AppUserStore>(
     });
 
 services.AddAuthDistributedStores();
+```
+
+### Database stores (transactional consume semantics)
+
+For strict cross-node consistency, switch to SQL-backed stores:
+
+```csharp
+services.AddSingleton<IAuthDbConnectionFactory, MyAuthDbConnectionFactory>();
+services.AddAuthDatabaseStores();
+```
+
+`IAuthDbConnectionFactory` should return an opened `DbConnection` for your provider.
+
+Example:
+
+```csharp
+public class MyAuthDbConnectionFactory : IAuthDbConnectionFactory
+{
+        private readonly string _connectionString;
+        public MyAuthDbConnectionFactory(IConfiguration config)
+        {
+                _connectionString = config["ConnectionStrings:AuthDb"]!;
+        }
+
+        public async Task<DbConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
+        {
+                var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync(cancellationToken);
+                return connection;
+        }
+}
+```
+
+Required tables:
+
+```sql
+CREATE TABLE auth_refresh_tokens (
+    token_hash NVARCHAR(200) PRIMARY KEY,
+    user_id NVARCHAR(200) NOT NULL,
+    created_at DATETIME2 NOT NULL,
+    expires_at DATETIME2 NOT NULL,
+    revoked_at DATETIME2 NULL,
+    replaced_by_token_hash NVARCHAR(200) NULL
+);
+
+CREATE TABLE auth_passkey_challenges (
+    challenge NVARCHAR(200) PRIMARY KEY,
+    user_id NVARCHAR(200) NULL,
+    purpose INT NOT NULL,
+    created_at DATETIME2 NOT NULL,
+    expires_at DATETIME2 NOT NULL
+);
+
+CREATE TABLE auth_passkey_credentials (
+    credential_id NVARCHAR(256) PRIMARY KEY,
+    user_id NVARCHAR(200) NOT NULL,
+    public_key NVARCHAR(MAX) NOT NULL,
+    sign_count BIGINT NOT NULL,
+    created_at DATETIME2 NOT NULL,
+    last_used_at DATETIME2 NULL
+);
+
+CREATE INDEX ix_auth_passkey_credentials_user_id ON auth_passkey_credentials (user_id);
+CREATE INDEX ix_auth_refresh_tokens_user_id ON auth_refresh_tokens (user_id);
+CREATE INDEX ix_auth_refresh_tokens_expires_at ON auth_refresh_tokens (expires_at);
+CREATE INDEX ix_auth_passkey_challenges_expires_at ON auth_passkey_challenges (expires_at);
 ```
 
 `AddAuthDistributedStores()` swaps these defaults:

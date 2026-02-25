@@ -5,7 +5,7 @@ using CodeWorks.Auth.Security;
 
 namespace CodeWorks.Auth.Services;
 
-public class PasskeyService<TIdentity> : IPasskeyService<TIdentity> where TIdentity : class, IAccountIdentity
+public class PasskeyService<TIdentity> : IPasskeyService<TIdentity> where TIdentity : class, IAccountIdentityBase
 {
   private readonly IAccountIdentityStore<TIdentity> _identityStore;
   private readonly IPasskeyChallengeStore _challengeStore;
@@ -33,18 +33,18 @@ public class PasskeyService<TIdentity> : IPasskeyService<TIdentity> where TIdent
     await _challengeStore.SaveAsync(new PasskeyChallengeRecord
     {
       Challenge = challenge,
-      UserId = user.Id,
+      UserId = user.IdAsString,
       Purpose = PasskeyChallengePurpose.Registration,
       ExpiresAt = DateTime.UtcNow.Add(_options.ChallengeLifetime)
     });
 
-    var existingCredentials = await _credentialStore.GetByUserIdAsync(user.Id);
+    var existingCredentials = await _credentialStore.GetByUserIdAsync(user.IdAsString);
 
     var optionsPayload = new
     {
       challenge,
       rp = new { id = _options.RpId, name = _options.RpName },
-      user = new { id = user.Id, name = user.Email, displayName = user.Name },
+      user = new { id = user.IdAsString, name = user.Email, displayName = user.Name },
       pubKeyCredParams = new[]
       {
         new { type = "public-key", alg = -7 },
@@ -73,14 +73,14 @@ public class PasskeyService<TIdentity> : IPasskeyService<TIdentity> where TIdent
     var challengeRecord = await _challengeStore.ConsumeAsync(
         challenge,
         PasskeyChallengePurpose.Registration,
-        user.Id);
+        user.IdAsString);
     if (challengeRecord == null)
       return false;
 
     var validation = await _responseVerifier.VerifyRegistrationAsync(
         attestationResponseJson,
         challenge,
-        user.Id,
+        user.IdAsString,
         _options);
 
     if (!validation.IsValid ||
@@ -94,7 +94,7 @@ public class PasskeyService<TIdentity> : IPasskeyService<TIdentity> where TIdent
     {
       CredentialId = validation.CredentialId,
       PublicKey = validation.PublicKey,
-      UserId = user.Id,
+      UserId = user.IdAsString,
       SignCount = validation.SignCount,
       CreatedAt = DateTime.UtcNow
     });

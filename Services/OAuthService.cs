@@ -6,7 +6,7 @@ using CodeWorks.Auth.Models;
 
 namespace CodeWorks.Auth.Services;
 
-public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity : class, IAccountIdentity, new()
+public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity : class, IAccountIdentityBase, new()
 {
     private readonly IAccountIdentityStore<TIdentity> _userStore;
     private readonly IAuthService<TIdentity> _authService;
@@ -129,7 +129,6 @@ public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity 
 
             TIdentity newUserCreation = new()
             {
-                Id = Guid.NewGuid().ToString(),
                 Email = email,
                 Name = name,
                 Provider = provider,
@@ -142,6 +141,11 @@ public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity 
                 LastLoginAt = DateTime.UtcNow,
                 PasswordHash = string.Empty // OAuth users don't have passwords
             };
+
+            if (newUserCreation is IAccountIdentity<string> stringIdentity)
+            {
+                stringIdentity.Id = Guid.NewGuid().ToString();
+            }
 
             await _userStore.CreateAsync(newUserCreation);
             var newUser = await _userStore.FindByProviderAsync(provider, providerId);

@@ -2,7 +2,7 @@ using CodeWorks.Auth.Models;
 
 namespace CodeWorks.Auth.Interfaces;
 
-public interface IAuthService<TIdentity> where TIdentity : IAccountIdentity
+public interface IAuthService<TIdentity> where TIdentity : IAccountIdentityBase
 {
   Task<AuthResult<TIdentity>> LoginAsync(string email, string password);
   Task<AuthSessionResult<TIdentity>> LoginWithSessionAsync(string email, string password);

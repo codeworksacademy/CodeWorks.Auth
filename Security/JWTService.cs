@@ -53,7 +53,7 @@ public class JwtService(JwtOptions options, JwtClaimMap claimMap) : IJwtService
     }
   }
 
-  public string GenerateToken(IAccountIdentity user)
+  public string GenerateToken(IAccountIdentityBase user)
   {
     if (user == null) throw new ArgumentNullException(nameof(user));
 
@@ -121,7 +121,7 @@ public class JwtService(JwtOptions options, JwtClaimMap claimMap) : IJwtService
     return ValidateTokenInternal(token, validateLifetime: true, out _);
   }
 
-  public string RefreshToken(string staleToken, IAccountIdentity user, int expirationWindowInHours = 5)
+  public string RefreshToken(string staleToken, IAccountIdentityBase user, int expirationWindowInHours = 5)
   {
     if (user == null) throw new ArgumentNullException(nameof(user));
 

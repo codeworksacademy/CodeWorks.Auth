@@ -46,7 +46,7 @@ public static class ClaimsExtensions
     /// Dynamically populates all properties listed in the configured JwtClaimMap.
     /// </summary>
     public static TUser ToUser<TUser>(this ClaimsPrincipal user)
-            where TUser : IAccountIdentity, new()
+            where TUser : IAccountIdentityBase, new()
     {
         var instance = new TUser();
 

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace CodeWorks.Auth.Services;
 
-public class AuthService<TIdentity> : IAuthService<TIdentity> where TIdentity : class, IAccountIdentity
+public class AuthService<TIdentity> : IAuthService<TIdentity> where TIdentity : class, IAccountIdentityBase
 {
   private readonly IAccountIdentityStore<TIdentity> _store;
   private readonly IJwtService _jwt;

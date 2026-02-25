@@ -2,7 +2,7 @@ using CodeWorks.Auth.Models;
 
 namespace CodeWorks.Auth.Interfaces;
 
-public interface IMfaService<TIdentity> where TIdentity : IAccountIdentity
+public interface IMfaService<TIdentity> where TIdentity : IAccountIdentityBase
 {
   Task<MfaEnrollmentResult> BeginAuthenticatorEnrollmentAsync(TIdentity user, string issuer);
   Task<bool> EnableAuthenticatorAsync(TIdentity user, string code);

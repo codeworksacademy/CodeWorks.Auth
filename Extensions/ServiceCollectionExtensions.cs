@@ -22,7 +22,7 @@ public static class ServiceCollectionExtensions
     Action<PasskeyOptions>? configurePasskeyOptions = null,
     Action<AuthStoreOptions>? configureStoreOptions = null
 )
-    where TAccountIdentity : class, IAccountIdentity
+    where TAccountIdentity : class, IAccountIdentityBase
     where TAccountIdentityStore : class, IAccountIdentityStore<TAccountIdentity>
   {
     // --- Configure options ---
@@ -147,6 +147,20 @@ public static class ServiceCollectionExtensions
 
     services.AddSingleton<DistributedCachePasskeyCredentialStore>();
     services.AddSingleton<IPasskeyCredentialStore>(sp => sp.GetRequiredService<DistributedCachePasskeyCredentialStore>());
+
+    return services;
+  }
+
+  public static IServiceCollection AddAuthDatabaseStores(this IServiceCollection services)
+  {
+    services.AddSingleton<DbRefreshTokenStore>();
+    services.AddSingleton<IRefreshTokenStore>(sp => sp.GetRequiredService<DbRefreshTokenStore>());
+
+    services.AddSingleton<DbPasskeyChallengeStore>();
+    services.AddSingleton<IPasskeyChallengeStore>(sp => sp.GetRequiredService<DbPasskeyChallengeStore>());
+
+    services.AddSingleton<DbPasskeyCredentialStore>();
+    services.AddSingleton<IPasskeyCredentialStore>(sp => sp.GetRequiredService<DbPasskeyCredentialStore>());
 
     return services;
   }

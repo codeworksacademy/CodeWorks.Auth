@@ -1,6 +1,6 @@
 namespace CodeWorks.Auth.Interfaces;
 
-public interface IAccountIdentityStore<TIdentity> where TIdentity : IAccountIdentity
+public interface IAccountIdentityStore<TIdentity> where TIdentity : IAccountIdentityBase
 {
   Task<TIdentity> FindByEmailAsync(string email);
   Task<bool> EmailExistsAsync(string email);

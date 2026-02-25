@@ -1,8 +1,8 @@
 namespace CodeWorks.Auth.Interfaces;
 
-public interface IAccountIdentity
+public interface IAccountIdentityBase
 {
-  string Id { get; set; }
+  string IdAsString { get; }
   string Email { get; set; }
   string Name { get; set; }
   string Picture { get; set; }
@@ -17,4 +17,15 @@ public interface IAccountIdentity
 
   List<string> Roles { get; set; }
   List<string> Permissions { get; set; }
+}
+
+public interface IAccountIdentity<TId> : IAccountIdentityBase where TId : notnull
+{
+  TId Id { get; set; }
+
+  string IAccountIdentityBase.IdAsString => Id?.ToString() ?? string.Empty;
+}
+
+public interface IAccountIdentity : IAccountIdentity<string>
+{
 }

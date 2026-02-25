@@ -5,7 +5,7 @@ using CodeWorks.Auth.Security;
 namespace CodeWorks.Auth.Services;
 
 public class RefreshTokenService<TIdentity> : IRefreshTokenService<TIdentity>
-    where TIdentity : class, IAccountIdentity
+  where TIdentity : class, IAccountIdentityBase
 {
   private readonly IAccountIdentityStore<TIdentity> _store;
   private readonly IJwtService _jwt;
@@ -34,7 +34,7 @@ public class RefreshTokenService<TIdentity> : IRefreshTokenService<TIdentity>
     await _refreshTokenStore.SaveTokenAsync(new RefreshTokenRecord
     {
       TokenHash = refreshTokenHash,
-      UserId = user.Id,
+      UserId = user.IdAsString,
       CreatedAt = DateTime.UtcNow,
       ExpiresAt = refreshTokenExpiresAt
     });
@@ -61,7 +61,7 @@ public class RefreshTokenService<TIdentity> : IRefreshTokenService<TIdentity>
     await _refreshTokenStore.SaveTokenAsync(new RefreshTokenRecord
     {
       TokenHash = newRefreshTokenHash,
-      UserId = user.Id,
+      UserId = user.IdAsString,
       CreatedAt = DateTime.UtcNow,
       ExpiresAt = newRefreshTokenExpiresAt
     });
