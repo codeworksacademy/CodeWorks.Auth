@@ -5,6 +5,7 @@ using CodeWorks.Auth.Security;
 using CodeWorks.Auth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
@@ -23,6 +24,14 @@ public static class ServiceCollectionExtensions
     // --- Configure options ---
     var jwtOptions = new JwtOptions();
     configureJwtOptions(jwtOptions);
+
+    if (string.IsNullOrWhiteSpace(jwtOptions.SigningKey) || jwtOptions.SigningKey.Length < 32)
+      throw new InvalidOperationException("JwtOptions.SigningKey must be at least 32 characters.");
+    if (string.IsNullOrWhiteSpace(jwtOptions.Issuer))
+      throw new InvalidOperationException("JwtOptions.Issuer is required.");
+    if (string.IsNullOrWhiteSpace(jwtOptions.Audience))
+      throw new InvalidOperationException("JwtOptions.Audience is required.");
+
     services.AddSingleton(jwtOptions);
     ClaimsExtensions.Configure(jwtOptions.ClaimMap);
 
@@ -33,6 +42,12 @@ public static class ServiceCollectionExtensions
     // --- Register stores & auth services ---
     services.AddScoped<IAccountIdentityStore<TAccountIdentity>, TAccountIdentityStore>();
     services.AddScoped<IAuthService<TAccountIdentity>, AuthService<TAccountIdentity>>();
+    services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
+    services.AddScoped<IRefreshTokenService<TAccountIdentity>, RefreshTokenService<TAccountIdentity>>();
+    services.AddSingleton<IUserMfaStore, InMemoryUserMfaStore>();
+    services.AddScoped<IMfaService<TAccountIdentity>, MfaService<TAccountIdentity>>();
+    services.AddScoped<IPasskeyService<TAccountIdentity>, NoOpPasskeyService<TAccountIdentity>>();
+    services.AddSingleton<IAuthAbuseProtector, NoOpAuthAbuseProtector>();
     services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 
     // --- Authentication & authorization (same as before) ---
@@ -55,7 +70,10 @@ public static class ServiceCollectionExtensions
             },
             OnAuthenticationFailed = context =>
             {
-              Console.WriteLine("Token invalid: " + context.Exception.Message);
+              var logger = context.HttpContext.RequestServices
+                  .GetService<ILoggerFactory>()
+                  ?.CreateLogger("CodeWorks.Auth.Jwt");
+              logger?.LogWarning(context.Exception, "JWT authentication failed");
               return Task.CompletedTask;
             },
             OnTokenValidated = context =>

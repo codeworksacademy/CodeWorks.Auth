@@ -7,5 +7,5 @@ public interface IOAuthService<TIdentity> where TIdentity : IAccountIdentity, ne
 {
   Task<AuthResult<TIdentity>> HandleOAuthCallbackAsync(ExternalLoginInfo loginInfo);
   Task<string> GenerateOAuthStateAsync(string provider, string? returnUrl = null);
-  Task<bool> ValidateOAuthStateAsync(string state);
+  Task<bool> ValidateOAuthStateAsync(string state, string? expectedProvider = null);
 }

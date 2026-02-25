@@ -24,7 +24,7 @@ public class InMemoryOAuthStateStore : IOAuthStateStore
     {
         if (_states.TryAdd(state.Token, state))
         {
-            _logger.LogDebug("Stored OAuth state: {Token}", state.Token);
+            _logger.LogDebug("Stored OAuth state");
             return Task.CompletedTask;
         }
 
@@ -40,14 +40,36 @@ public class InMemoryOAuthStateStore : IOAuthStateStore
     public Task UpdateStateAsync(OAuthState state)
     {
         _states[state.Token] = state;
-        _logger.LogDebug("Updated OAuth state: {Token}", state.Token);
+        _logger.LogDebug("Updated OAuth state");
         return Task.CompletedTask;
+    }
+
+    public Task<OAuthState?> ConsumeStateAsync(string token, string? expectedProvider = null)
+    {
+        if (!_states.TryRemove(token, out var state) || state == null)
+        {
+            return Task.FromResult<OAuthState?>(null);
+        }
+
+        if (state.ExpiresAt < DateTime.UtcNow || state.IsUsed)
+        {
+            return Task.FromResult<OAuthState?>(null);
+        }
+
+        if (!string.IsNullOrWhiteSpace(expectedProvider) &&
+            !string.Equals(state.Provider, expectedProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult<OAuthState?>(null);
+        }
+
+        state.IsUsed = true;
+        return Task.FromResult<OAuthState?>(state);
     }
 
     public Task DeleteStateAsync(string token)
     {
         _states.TryRemove(token, out _);
-        _logger.LogDebug("Deleted OAuth state: {Token}", token);
+        _logger.LogDebug("Deleted OAuth state");
         return Task.CompletedTask;
     }
 

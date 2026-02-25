@@ -6,6 +6,7 @@ public class JwtOptions
     public string Issuer { get; set; } = "default-issuer";
     public string Audience { get; set; } = "default-audience";
     public TimeSpan Expiration { get; set; } = TimeSpan.FromHours(1);
+    public TimeSpan RefreshTokenExpiration { get; set; } = TimeSpan.FromDays(14);
     public string CookieName { get; set; } = "access-token";
     public JwtClaimMap ClaimMap { get; } = [];
 

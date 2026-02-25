@@ -18,6 +18,74 @@ A highly flexible, pluggable authentication module for .NET APIs that supports:
 - ✅ **Plug-and-play email auth**: Verification and magic link flows supported
 - ✅ **Ready for NuGet packaging**
 
+## Security Hardening Notes (2026-02)
+
+- JWT refresh now validates signature, issuer, audience, and token algorithm before issuing a new token.
+- Direct password reset by email is disabled in `IAuthService<TUser>.ResetPasswordAsync(...)`; use token-based reset via `EmailAuthService`.
+- Email verification, magic link, and password reset tokens are now stored as SHA-256 hashes (raw tokens are only sent to users).
+- OAuth state validation is one-time use via consume semantics to reduce replay risk.
+- Default login abuse hooks are available via `IAuthAbuseProtector` (registered as `NoOpAuthAbuseProtector` by default).
+
+## Session Security: Refresh Token Rotation
+
+The module now supports access + refresh token sessions with one-time refresh token rotation.
+
+```csharp
+var session = await authService.LoginWithSessionAsync(email, password);
+if (!session.IsSuccessful) return Unauthorized();
+
+// later
+var rotated = await authService.RotateRefreshTokenAsync(session.RefreshToken!);
+```
+
+`JwtOptions` now includes:
+
+```csharp
+options.RefreshTokenExpiration = TimeSpan.FromDays(14);
+```
+
+By default, refresh tokens are stored hashed and kept in an in-memory store (`IRefreshTokenStore`).
+Replace with your own persistent store for production.
+
+## MFA: Authenticator Apps + Recovery Codes
+
+The module includes built-in TOTP primitives for authenticator apps:
+
+```csharp
+var enrollment = await mfaService.BeginAuthenticatorEnrollmentAsync(user, "CodeWorks");
+// Show enrollment.AuthenticatorUri as QR code or manual entry key
+
+var enabled = await mfaService.EnableAuthenticatorAsync(user, codeFromApp);
+var recoveryCodes = await mfaService.GenerateRecoveryCodesAsync(user);
+```
+
+Validation:
+
+```csharp
+var validTotp = await mfaService.VerifyAuthenticatorCodeAsync(user, code);
+var usedRecoveryCode = await mfaService.RedeemRecoveryCodeAsync(user, recoveryCode);
+```
+
+## Device Keychains / Passkeys
+
+For platform keychains and passkeys (WebAuthn), use `IPasskeyService<TUser>`.
+The default implementation is `NoOpPasskeyService<TUser>` so you can plug in your own WebAuthn provider without changing auth core APIs.
+
+### Optional Login Abuse Protection
+
+Implement `IAuthAbuseProtector` to add lockout and throttling policies:
+
+```csharp
+public class RedisAuthAbuseProtector : IAuthAbuseProtector
+{
+    public Task<bool> IsLoginAllowedAsync(string email) => Task.FromResult(true);
+    public Task RecordFailedLoginAsync(string email) => Task.CompletedTask;
+    public Task RecordSuccessfulLoginAsync(string email) => Task.CompletedTask;
+}
+
+services.AddSingleton<IAuthAbuseProtector, RedisAuthAbuseProtector>();
+```
+
 
 ## Installation
 

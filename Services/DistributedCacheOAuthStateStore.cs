@@ -35,7 +35,7 @@ public class DistributedCacheOAuthStateStore : IOAuthStateStore
         };
 
         await _cache.SetStringAsync(key, json, options);
-        _logger.LogDebug("Stored OAuth state in distributed cache: {Token}", state.Token);
+        _logger.LogDebug("Stored OAuth state in distributed cache");
     }
 
     public async Task<OAuthState?> GetStateAsync(string token)
@@ -56,11 +56,38 @@ public class DistributedCacheOAuthStateStore : IOAuthStateStore
         await StoreStateAsync(state); // Simply overwrite in cache
     }
 
+    public async Task<OAuthState?> ConsumeStateAsync(string token, string? expectedProvider = null)
+    {
+        var key = GetKey(token);
+        var json = await _cache.GetStringAsync(key);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        var state = JsonSerializer.Deserialize<OAuthState>(json);
+        if (state == null || state.IsUsed || state.ExpiresAt < DateTime.UtcNow)
+        {
+            await _cache.RemoveAsync(key);
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expectedProvider) &&
+            !string.Equals(state.Provider, expectedProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        state.IsUsed = true;
+        await _cache.RemoveAsync(key);
+        return state;
+    }
+
     public async Task DeleteStateAsync(string token)
     {
         var key = GetKey(token);
         await _cache.RemoveAsync(key);
-        _logger.LogDebug("Deleted OAuth state from distributed cache: {Token}", token);
+        _logger.LogDebug("Deleted OAuth state from distributed cache");
     }
 
     public Task CleanupExpiredStatesAsync()

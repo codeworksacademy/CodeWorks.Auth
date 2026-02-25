@@ -22,9 +22,10 @@ public class EmailAuthService<TAccountIdentity>(
         if (user == null) return;
 
         var token = TokenHelper.GenerateToken();
+        var hashedToken = TokenHelper.HashToken(token);
         await _tokenStore.SaveTokenAsync(new TokenRecord
         {
-            Token = token,
+            Token = hashedToken,
             UserId = user.Id,
             Purpose = EmailTokenPurpose.EmailVerification,
             ExpiresAt = DateTime.UtcNow.AddHours(48)
@@ -37,9 +38,10 @@ public class EmailAuthService<TAccountIdentity>(
     public async Task RequestVerificationEmailAsync(TAccountIdentity user, string callbackBaseUrl)
     {
         var token = TokenHelper.GenerateToken();
+        var hashedToken = TokenHelper.HashToken(token);
         await _tokenStore.SaveTokenAsync(new TokenRecord
         {
-            Token = token,
+            Token = hashedToken,
             UserId = user.Id,
             Purpose = EmailTokenPurpose.EmailVerification,
             ExpiresAt = DateTime.UtcNow.AddHours(48)
@@ -55,9 +57,10 @@ public class EmailAuthService<TAccountIdentity>(
         if (user == null) return;
 
         var token = TokenHelper.GenerateToken();
+        var hashedToken = TokenHelper.HashToken(token);
         await _tokenStore.SaveTokenAsync(new TokenRecord
         {
-            Token = token,
+            Token = hashedToken,
             UserId = user.Id,
             Purpose = EmailTokenPurpose.MagicLinkLogin,
             ExpiresAt = DateTime.UtcNow.AddMinutes(30)
@@ -73,9 +76,10 @@ public class EmailAuthService<TAccountIdentity>(
         if (user == null) return;
 
         var token = TokenHelper.GenerateToken();
+        var hashedToken = TokenHelper.HashToken(token);
         await _tokenStore.SaveTokenAsync(new TokenRecord
         {
-            Token = token,
+            Token = hashedToken,
             UserId = user.Id,
             Purpose = EmailTokenPurpose.PasswordReset,
             ExpiresAt = DateTime.UtcNow.AddMinutes(30)
@@ -91,7 +95,8 @@ public class EmailAuthService<TAccountIdentity>(
 
     public async Task<bool> ConfirmEmailAsync(string token)
     {
-        var record = await _tokenStore.GetValidTokenAsync(token, EmailTokenPurpose.EmailVerification);
+        var hashedToken = TokenHelper.HashToken(token);
+        var record = await _tokenStore.GetValidTokenAsync(hashedToken, EmailTokenPurpose.EmailVerification);
         if (record == null || record.Used || record.ExpiresAt < DateTime.UtcNow)
             return false;
 
@@ -100,14 +105,15 @@ public class EmailAuthService<TAccountIdentity>(
             return false;
 
         await _userStore.MarkEmailVerifiedAsync(user);
-        await _tokenStore.MarkTokenUsedAsync(token);
+        await _tokenStore.MarkTokenUsedAsync(hashedToken);
         return true;
     }
 
 
     public async Task<TAccountIdentity?> RedeemMagicLinkAsync(string token)
     {
-        var record = await _tokenStore.GetValidTokenAsync(token, EmailTokenPurpose.MagicLinkLogin);
+        var hashedToken = TokenHelper.HashToken(token);
+        var record = await _tokenStore.GetValidTokenAsync(hashedToken, EmailTokenPurpose.MagicLinkLogin);
         if (record == null || record.Used || record.ExpiresAt < DateTime.UtcNow)
             return null;
 
@@ -115,13 +121,14 @@ public class EmailAuthService<TAccountIdentity>(
         if (user == null)
             return null;
 
-        await _tokenStore.MarkTokenUsedAsync(token);
+        await _tokenStore.MarkTokenUsedAsync(hashedToken);
         return user;
     }
 
     public async Task<bool> ResetPasswordAsync(string token, string newPassword)
     {
-        var record = await _tokenStore.GetValidTokenAsync(token, EmailTokenPurpose.PasswordReset);
+        var hashedToken = TokenHelper.HashToken(token);
+        var record = await _tokenStore.GetValidTokenAsync(hashedToken, EmailTokenPurpose.PasswordReset);
         if (record == null || record.Used || record.ExpiresAt < DateTime.UtcNow)
             return false;
 
@@ -132,7 +139,7 @@ public class EmailAuthService<TAccountIdentity>(
         user.PasswordHash = PasswordHelper<IAccountIdentity>.HashPassword(user, newPassword);
         user.IsEmailVerified = true;
         await _userStore.UpdateAsync(user);
-        await _tokenStore.MarkTokenUsedAsync(token);
+        await _tokenStore.MarkTokenUsedAsync(hashedToken);
         return true;
     }
 

@@ -12,6 +12,47 @@ public class JwtService(JwtOptions options, JwtClaimMap claimMap) : IJwtService
   private readonly JwtOptions _options = options;
   private readonly JwtClaimMap _claimMap = claimMap;
 
+  private TokenValidationParameters BuildValidationParameters(bool validateLifetime)
+  {
+    return new TokenValidationParameters
+    {
+      ValidateIssuer = true,
+      ValidateAudience = true,
+      ValidateLifetime = validateLifetime,
+      ValidateIssuerSigningKey = true,
+      ValidIssuer = _options.Issuer,
+      ValidAudience = _options.Audience,
+      IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
+      ClockSkew = TimeSpan.FromMinutes(2),
+      RoleClaimType = ClaimTypes.Role,
+      NameClaimType = ClaimTypes.Email
+    };
+  }
+
+  private ClaimsPrincipal? ValidateTokenInternal(string token, bool validateLifetime, out SecurityToken? validatedToken)
+  {
+    validatedToken = null;
+    var tokenHandler = new JwtSecurityTokenHandler();
+
+    try
+    {
+      var principal = tokenHandler.ValidateToken(token, BuildValidationParameters(validateLifetime), out var securityToken);
+
+      if (securityToken is not JwtSecurityToken jwtToken ||
+          !string.Equals(jwtToken.Header.Alg, SecurityAlgorithms.HmacSha256, StringComparison.OrdinalIgnoreCase))
+      {
+        return null;
+      }
+
+      validatedToken = securityToken;
+      return principal;
+    }
+    catch
+    {
+      return null;
+    }
+  }
+
   public string GenerateToken(IAccountIdentity user)
   {
     if (user == null) throw new ArgumentNullException(nameof(user));
@@ -77,50 +118,36 @@ public class JwtService(JwtOptions options, JwtClaimMap claimMap) : IJwtService
 
   public ClaimsPrincipal? ValidateToken(string token)
   {
-    var tokenHandler = new JwtSecurityTokenHandler();
-    try
-    {
-      return tokenHandler.ValidateToken(token, new TokenValidationParameters
-      {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = _options.Issuer,
-        ValidAudience = _options.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
-        ClockSkew = TimeSpan.FromMinutes(5),
-        RoleClaimType = ClaimTypes.Role,
-        NameClaimType = ClaimTypes.Email
-      }, out _);
-    }
-    catch
-    {
-      return null;
-    }
+    return ValidateTokenInternal(token, validateLifetime: true, out _);
   }
 
   public string RefreshToken(string staleToken, IAccountIdentity user, int expirationWindowInHours = 5)
   {
-    var tokenHandler = new JwtSecurityTokenHandler();
-    var token = tokenHandler.ReadJwtToken(staleToken);
+    if (user == null) throw new ArgumentNullException(nameof(user));
 
-    var refreshWindow = token.ValidTo + TimeSpan.FromHours(expirationWindowInHours);
-    var now = DateTime.UtcNow;
+    var principal = ValidateTokenInternal(staleToken, validateLifetime: false, out var validatedToken);
+    if (principal == null || validatedToken is not JwtSecurityToken jwtToken)
+      throw new SecurityTokenException("Invalid token.");
 
-    // Check if the token can be refreshed
-    if (refreshWindow < now)
+    var tokenEmail = principal.FindFirstValue(ClaimTypes.Email) ?? principal.FindFirstValue("email");
+    if (string.IsNullOrWhiteSpace(tokenEmail) ||
+        !string.Equals(tokenEmail, user.Email, StringComparison.OrdinalIgnoreCase))
+    {
+      throw new SecurityTokenException("Token subject does not match user.");
+    }
+
+    var refreshWindow = jwtToken.ValidTo + TimeSpan.FromHours(expirationWindowInHours);
+    if (refreshWindow < DateTime.UtcNow)
       throw new SecurityTokenExpiredException("Token is expired. Cannot refresh.");
 
     return GenerateToken(user);
   }
 
-  public string GetEmailFromToken(string token)
+  public string GetEmailFromToken(string token, bool allowExpired = false)
   {
-    var tokenHandler = new JwtSecurityTokenHandler();
-    var jwtToken = tokenHandler.ReadJwtToken(token);
-    var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email || c.Type == "email");
-    return emailClaim?.Value ?? string.Empty;
+    var principal = ValidateTokenInternal(token, validateLifetime: !allowExpired, out _);
+    if (principal == null) return string.Empty;
+    return principal.FindFirstValue(ClaimTypes.Email) ?? principal.FindFirstValue("email") ?? string.Empty;
   }
 
 

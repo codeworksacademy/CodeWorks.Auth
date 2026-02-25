@@ -9,6 +9,7 @@ public interface IOAuthStateStore
 {
   Task StoreStateAsync(OAuthState state);
   Task<OAuthState?> GetStateAsync(string token);
+  Task<OAuthState?> ConsumeStateAsync(string token, string? expectedProvider = null);
   Task UpdateStateAsync(OAuthState state);
   Task DeleteStateAsync(string token);
   Task CleanupExpiredStatesAsync();

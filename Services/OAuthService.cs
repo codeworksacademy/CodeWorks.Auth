@@ -33,6 +33,8 @@ public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity 
             Token = stateToken,
             Provider = provider,
             ReturnUrl = returnUrl,
+            CreatedAt = DateTime.UtcNow,
+            IsUsed = false,
             ExpiresAt = DateTime.UtcNow.AddMinutes(10)
         };
 
@@ -156,17 +158,9 @@ public class OAuthService<TIdentity> : IOAuthService<TIdentity> where TIdentity 
         }
     }
 
-    public Task<bool> ValidateOAuthStateAsync(string state)
+    public async Task<bool> ValidateOAuthStateAsync(string state, string? expectedProvider = null)
     {
-        return _oauthStateStore.GetStateAsync(state)
-            .ContinueWith(task =>
-            {
-                var oauthState = task.Result;
-                if (oauthState == null || oauthState.ExpiresAt < DateTime.UtcNow)
-                {
-                    return false;
-                }
-                return true;
-            });
+        var oauthState = await _oauthStateStore.ConsumeStateAsync(state, expectedProvider);
+        return oauthState != null;
     }
 }
