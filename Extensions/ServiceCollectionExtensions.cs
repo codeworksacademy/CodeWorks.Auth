@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text;
 using CodeWorks.Auth.Interfaces;
+using CodeWorks.Auth.Models;
 using CodeWorks.Auth.Security;
 using CodeWorks.Auth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -16,7 +17,8 @@ public static class ServiceCollectionExtensions
   public static IServiceCollection AddAuthModule<TAccountIdentity, TAccountIdentityStore>(
     this IServiceCollection services,
     Action<JwtOptions> configureJwtOptions,
-    IEnumerable<string>? permissionPolicies = null
+    IEnumerable<string>? permissionPolicies = null,
+    Action<PasskeyOptions>? configurePasskeyOptions = null
 )
     where TAccountIdentity : class, IAccountIdentity
     where TAccountIdentityStore : class, IAccountIdentityStore<TAccountIdentity>
@@ -35,6 +37,10 @@ public static class ServiceCollectionExtensions
     services.AddSingleton(jwtOptions);
     ClaimsExtensions.Configure(jwtOptions.ClaimMap);
 
+    var passkeyOptions = new PasskeyOptions();
+    configurePasskeyOptions?.Invoke(passkeyOptions);
+    services.AddSingleton(passkeyOptions);
+
     // --- Register JwtService with options.ClaimMap ---
     services.AddSingleton<IJwtService>(sp =>
         new JwtService(jwtOptions, jwtOptions.ClaimMap));
@@ -46,7 +52,10 @@ public static class ServiceCollectionExtensions
     services.AddScoped<IRefreshTokenService<TAccountIdentity>, RefreshTokenService<TAccountIdentity>>();
     services.AddSingleton<IUserMfaStore, InMemoryUserMfaStore>();
     services.AddScoped<IMfaService<TAccountIdentity>, MfaService<TAccountIdentity>>();
-    services.AddScoped<IPasskeyService<TAccountIdentity>, NoOpPasskeyService<TAccountIdentity>>();
+    services.AddSingleton<IPasskeyChallengeStore, InMemoryPasskeyChallengeStore>();
+    services.AddSingleton<IPasskeyCredentialStore, InMemoryPasskeyCredentialStore>();
+    services.AddSingleton<IPasskeyResponseVerifier, NoOpPasskeyResponseVerifier>();
+    services.AddScoped<IPasskeyService<TAccountIdentity>, PasskeyService<TAccountIdentity>>();
     services.AddSingleton<IAuthAbuseProtector, NoOpAuthAbuseProtector>();
     services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 

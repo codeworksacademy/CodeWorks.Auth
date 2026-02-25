@@ -68,8 +68,45 @@ var usedRecoveryCode = await mfaService.RedeemRecoveryCodeAsync(user, recoveryCo
 
 ## Device Keychains / Passkeys
 
-For platform keychains and passkeys (WebAuthn), use `IPasskeyService<TUser>`.
-The default implementation is `NoOpPasskeyService<TUser>` so you can plug in your own WebAuthn provider without changing auth core APIs.
+The module now includes a concrete `PasskeyService<TUser>` with:
+
+- challenge generation and expiry checks,
+- one-time challenge consumption,
+- credential metadata persistence via `IPasskeyCredentialStore`,
+- auth challenge persistence via `IPasskeyChallengeStore`.
+
+### Required verifier for production WebAuthn
+
+`PasskeyService<TUser>` delegates cryptographic attestation/assertion checks to `IPasskeyResponseVerifier`.
+By default, `NoOpPasskeyResponseVerifier` is registered (fails closed), so register your verifier implementation:
+
+```csharp
+services.AddSingleton<IPasskeyResponseVerifier, MyWebAuthnResponseVerifier>();
+services.AddSingleton<IPasskeyCredentialStore, MyPasskeyCredentialStore>();
+services.AddSingleton<IPasskeyChallengeStore, MyPasskeyChallengeStore>();
+```
+
+### Passkey options
+
+Configure RP metadata and origin during module registration:
+
+```csharp
+services.AddAuthModule<AppUser, AppUserStore>(
+    options =>
+    {
+        options.SigningKey = Configuration["Jwt:Key"]!;
+        options.Issuer = "your-api";
+        options.Audience = "your-users";
+    },
+    permissionPolicies: new[] { "CanViewReports" },
+    configurePasskeyOptions: passkey =>
+    {
+        passkey.RpId = "app.example.com";
+        passkey.RpName = "Example App";
+        passkey.ExpectedOrigin = "https://app.example.com";
+        passkey.ChallengeLifetime = TimeSpan.FromMinutes(5);
+    });
+```
 
 ### Optional Login Abuse Protection
 
