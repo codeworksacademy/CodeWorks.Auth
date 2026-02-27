@@ -1,0 +1,88 @@
+@baseUrl = http://localhost:5055
+@email = demo@example.com
+@password = Password123!
+
+### Bootstrap User
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "name": "Demo User"
+}
+
+> {%
+  client.test("Bootstrap register is 200 or 400", function() {
+    client.assert(response.status === 200 || response.status === 400, "Expected 200 or 400");
+  });
+
+  const data = response.data || response.body || {};
+  if (data.accessToken) {
+    client.global.set("accessToken", data.accessToken);
+    if (client.environment && client.environment.set) client.environment.set("accessToken", data.accessToken);
+  }
+  if (data.refreshToken) {
+    client.global.set("refreshToken", data.refreshToken);
+    if (client.environment && client.environment.set) client.environment.set("refreshToken", data.refreshToken);
+  }
+%}
+
+### Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+> {%
+  client.test("Login status is 200", function() {
+    client.assert(response.status === 200, "Expected 200");
+  });
+
+  const data = response.data || response.body || {};
+  if (data.accessToken) {
+    client.global.set("accessToken", data.accessToken);
+    if (client.environment && client.environment.set) client.environment.set("accessToken", data.accessToken);
+  }
+  if (data.refreshToken) {
+    client.global.set("refreshToken", data.refreshToken);
+    if (client.environment && client.environment.set) client.environment.set("refreshToken", data.refreshToken);
+  }
+%}
+
+### Refresh
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {%
+  client.test("Refresh status is 200", function() {
+    client.assert(response.status === 200, "Expected 200");
+  });
+
+  const data = response.data || response.body || {};
+  if (data.accessToken) {
+    client.global.set("accessToken", data.accessToken);
+    if (client.environment && client.environment.set) client.environment.set("accessToken", data.accessToken);
+  }
+  if (data.refreshToken) {
+    client.global.set("refreshToken", data.refreshToken);
+    if (client.environment && client.environment.set) client.environment.set("refreshToken", data.refreshToken);
+  }
+%}
+
+### Get Me (Authorized)
+GET {{baseUrl}}/api/account/me
+Authorization: Bearer {{accessToken}}
+
+> {%
+  client.test("Account endpoint status is 200", function() {
+    client.assert(response.status === 200, "Expected 200");
+  });
+%}

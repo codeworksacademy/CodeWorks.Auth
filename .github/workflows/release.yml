@@ -20,17 +20,19 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: '10.0.x'
         source-url: https://api.nuget.org/v3/index.json
 
     - name: Restore
       run: dotnet restore
 
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build CodeWorks.Auth.csproj --configuration Release --no-restore
 
     - name: Pack
-      run: dotnet pack --configuration Release --no-build
+      run: dotnet pack CodeWorks.Auth.csproj --configuration Release --no-build /p:GeneratePackageOnBuild=false
 
     - name: Push to NuGet
-      run: dotnet nuget push "bin/Release/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+      run: |
+        dotnet nuget push "bin/Release/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+        dotnet nuget push "bin/Release/*.snupkg" --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate

@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
     <PackageId>CodeWorks.Auth</PackageId>
-    <Version>0.0.9</Version>
+    <Version>0.1.0</Version>
     <Authors>CodeWorks</Authors>
     <Company>CodeWorks</Company>
     <Description>Flexible, pluggable authentication module for .NET APIs with JWT, email login, and MFA support.</Description>
@@ -22,9 +22,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.1" />
     <None Include="./readme.md" Pack="true" PackagePath="\"/>
+    <Compile Remove="samples/**/*.cs" />
+    <None Include="samples/**/*.cs" Pack="true" PackagePath="samples/" />
+    <None Include="samples/**/*.md" Pack="true" PackagePath="samples/" />
+    <None Include="samples/**/*.json" Pack="true" PackagePath="samples/" />
+    <None Include="samples/**/*.http" Pack="true" PackagePath="samples/" />
+    <None Remove="samples/**/bin/**" />
+    <None Remove="samples/**/obj/**" />
+    <None Include="sql/**/*.sql" Pack="true" PackagePath="sql/" />
   </ItemGroup>
 
 </Project>

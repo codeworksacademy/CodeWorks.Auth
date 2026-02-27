@@ -76,3 +76,7 @@ TestResult-*.xml
 *.bak
 *.tmp
 *.temp
+
+# OS-specific
+.DS_Store
+Thumbs.db

@@ -18,6 +18,28 @@ A highly flexible, pluggable authentication module for .NET APIs that supports:
 - ✅ **Plug-and-play email auth**: Verification and magic link flows supported
 - ✅ **Ready for NuGet packaging**
 
+## Release Notes
+
+### v0.1.0
+
+- Security hardening: strict JWT refresh validation, one-time OAuth state consumption, hashed email/magic/reset tokens.
+- Session security: refresh token rotation and revocation services with in-memory, distributed-cache, and DB-backed store options.
+- MFA and passkeys: TOTP enrollment/verification, recovery codes, passkey challenge/credential services, and pluggable WebAuthn verifier interface.
+- Flexible account IDs: support for string, Guid, int, and other notnull ID types via IAccountIdentity<TId>.
+- Fast onboarding: SQL Server/PostgreSQL schema scripts, minimal samples, Startup.cs MVC sample, and canonical mvc-sample.http test flow.
+
+## 5-Minute Quickstart
+
+If you want the fastest path, copy one of these files and fill in your store implementations:
+
+- SQL Server sample: `samples/sqlserver/Program.cs`
+- PostgreSQL sample: `samples/postgresql/Program.cs`
+- Traditional MVC Startup sample: `samples/mvc-startup/`
+- SQL Server config template: `samples/sqlserver/appsettings.example.json`
+- PostgreSQL config template: `samples/postgresql/appsettings.example.json`
+
+Companion notes are in `samples/README.md`.
+
 ## Typed Account IDs
 
 Account IDs are now flexible. You can use `string`, `Guid`, `int`, or any `notnull` type.
@@ -103,7 +125,34 @@ services.AddAuthDistributedStores();
 
 ### Database stores (transactional consume semantics)
 
-For strict cross-node consistency, switch to SQL-backed stores:
+For strict cross-node consistency, switch to SQL-backed stores.
+
+#### Fast setup (dead simple)
+
+1) Run one script:
+
+- SQL Server: `sql/sqlserver-auth-stores.sql`
+- PostgreSQL: `sql/postgresql-auth-stores.sql`
+
+2) Register stores with one call:
+
+```csharp
+services.AddAuthDatabaseStores(async ct =>
+{
+    var connection = new SqlConnection(Configuration.GetConnectionString("AuthDb"));
+    await connection.OpenAsync(ct);
+    return connection;
+});
+```
+
+3) Done. Refresh/passkey stores now use transactional DB-backed implementations.
+
+You can also copy the complete ready-to-edit startup files:
+
+- `samples/sqlserver/Program.cs`
+- `samples/postgresql/Program.cs`
+
+You can still use explicit factory registration if preferred:
 
 ```csharp
 services.AddSingleton<IAuthDbConnectionFactory, MyAuthDbConnectionFactory>();
@@ -130,6 +179,25 @@ public class MyAuthDbConnectionFactory : IAuthDbConnectionFactory
                 return connection;
         }
 }
+```
+
+Provider package examples:
+
+```bash
+dotnet add package Microsoft.Data.SqlClient
+# or
+dotnet add package Npgsql
+```
+
+PostgreSQL quick factory:
+
+```csharp
+services.AddAuthDatabaseStores(async ct =>
+{
+    var connection = new NpgsqlConnection(Configuration.GetConnectionString("AuthDb"));
+    await connection.OpenAsync(ct);
+    return connection;
+});
 ```
 
 Required tables:

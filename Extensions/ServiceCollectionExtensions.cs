@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Data.Common;
 using System.Text;
 using CodeWorks.Auth.Interfaces;
 using CodeWorks.Auth.Models;
@@ -84,6 +85,17 @@ public static class ServiceCollectionExtensions
                       context.Request.Cookies.TryGetValue(jwtOptions.CookieName, out var cookieToken))
                 context.Token = cookieToken;
 
+              if (!string.IsNullOrWhiteSpace(context.Token))
+              {
+                var token = context.Token.Trim();
+                if (token.Contains("{{", StringComparison.Ordinal) ||
+                    token.Contains("}}", StringComparison.Ordinal) ||
+                    token.Count(c => c == '.') != 2)
+                {
+                  context.Token = null;
+                }
+              }
+
               return Task.CompletedTask;
             },
             OnAuthenticationFailed = context =>
@@ -163,6 +175,32 @@ public static class ServiceCollectionExtensions
     services.AddSingleton<IPasskeyCredentialStore>(sp => sp.GetRequiredService<DbPasskeyCredentialStore>());
 
     return services;
+  }
+
+  public static IServiceCollection AddAuthDatabaseStores(
+      this IServiceCollection services,
+      Func<CancellationToken, Task<DbConnection>> openConnectionAsync)
+  {
+    services.AddSingleton<IAuthDbConnectionFactory>(
+        _ => new DelegateAuthDbConnectionFactory(openConnectionAsync));
+
+    return services.AddAuthDatabaseStores();
+  }
+
+  public static IServiceCollection AddAuthDatabaseStores(
+      this IServiceCollection services,
+      Func<DbConnection> openConnection)
+  {
+    return services.AddAuthDatabaseStores(_ =>
+    {
+      var connection = openConnection();
+      if (connection.State != System.Data.ConnectionState.Open)
+      {
+        connection.Open();
+      }
+
+      return Task.FromResult(connection);
+    });
   }
 
 }
